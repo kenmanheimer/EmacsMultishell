@@ -42,7 +42,8 @@ I've been using Emacs since it was publicly available (1985 or 1986), and have c
       completion is done against existing shell buffer names stripped of
       their asterisks.)
   * With a doubled universal arg, prompt for the target shell buffer and
-    use the provided name as the ensuing default.
+    use the provided name as the ensuing default. This is how the "primary"
+    is chosen.
 
   The last few things enable a kind of project-focus mode.  I often have
   various shell buffers, each one associated with a project. As I switch
