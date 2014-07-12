@@ -3,7 +3,7 @@ EmacsUtils
 
 Handy Emacs utilities
 
-I've been using Emacs since it was publicly available (1985 or 1986), and have contributed some items which are included with Emacs, notably the [Allout outliner](http://myriadicity.net/software-and-systems/craft/emacs-allout), [icomplete mode](http://www.emacswiki.org/emacs/IcompleteMode). And python-mode's [pdbtrack functionality](http://myriadicity.net/software-and-systems/craft/crafty-hacks#section-1). Like many long-time Emacs users, I've got some personal custom code, some of which I wouldn't do without. Here's some - I hope to include more that I think would be useful to others, as time allows.
+I've been using Emacs since it was publicly available (1985 or 1986), and have contributed some items which are included with Emacs, notably the [Allout outliner](http://myriadicity.net/software-and-systems/craft/emacs-allout), [icomplete mode](http://www.emacswiki.org/emacs/IcompleteMode), and python-mode's [pdbtrack functionality](http://myriadicity.net/software-and-systems/craft/crafty-hacks#section-1). Like many long-time Emacs users, I've got some personal custom code, some of which I wouldn't do without. Here's some that I particularly like, and think might be useful to others - I hope to include more, as time allows.
 
 * **pdbtrack.el**
   * Add sensitivity to comint shells so the source file lines are automatically
@@ -17,7 +17,6 @@ I've been using Emacs since it was publicly available (1985 or 1986), and have c
     It would eventually be nice to generalize this code, to work for things
     like the node.js debugger. We'll see if I (or anyone) ever gets around to
     that.
-
 
 * **poptoshell.el**
   * I use the emacs shell a lot. This code enables me to streamline and
