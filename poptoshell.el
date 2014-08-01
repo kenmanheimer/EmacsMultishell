@@ -179,7 +179,7 @@ Return indicated default on empty input."
   (let ((got
          (completing-read
           prompt
-          (filter 'identity
+          (remq nil
                   (mapcar (lambda (buffer)
                             (let ((name (buffer-name buffer)))
                               (if (with-current-buffer buffer
