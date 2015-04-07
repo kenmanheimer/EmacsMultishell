@@ -19,8 +19,6 @@
 
 (require 'comint)
 (require 'shell)
-(require 'rst)                          ; for 'filter'
- )
 
 (provide 'poptoshell)
 
