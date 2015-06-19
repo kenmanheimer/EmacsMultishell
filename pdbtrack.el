@@ -2,6 +2,16 @@
 
 ;;; Standalone Python PDB dynamic file tracking.
 
+;;; CRAP. This was extracted from python.el, which lacks some crucial
+;;; features of my original pdbtrack code. python-mode.el (available via
+;;; marmalade, melpa) has a much more faithful version, including seeking
+;;; an existing buffer for a function if the indicated file can't be found
+;;; - crucial for doing remote debugging, eg via rpdb.
+;;;
+;;; I'm going to retire this code, for the moment, until I can recover
+;;; pdbtrack (plus whatever improvements may have been developed) from
+;;; python-mode.el.
+
 (define-minor-mode pdbtrack-minor-mode
   "Show lines in source file when Python PDB debugger steps through them."
   nil ":PDBtrack" :require 'pdbtrack :version "2.1"
@@ -99,5 +109,27 @@ Argument OUTPUT is a string with the output from the comint process."
           (setq pdbtrack-tracked-buffer nil
                 pdbtrack-buffers-to-kill nil)))))
   output)
+
+(defun pdbtrack-cherry-pick-buffer (funcname lineno)
+  "Find most recent buffer having name or having function named FUNCNAME.
+We walk the buffer-list history for python-mode buffers that are
+named for funcname or define a function funcname."
+  (let ((buffers (buffer-list))
+        buf
+        got)
+    (while (and buffers (not got))
+      (setq buf (car buffers)
+            buffers (cdr buffers))
+      (if (and (save-excursion (set-buffer buf)
+                               (string= major-mode "python-mode"))
+               (or (string-match funcname (buffer-name buf))
+                   (string-match (concat "^\\s-*\\(def\\|class\\)\\s-+"
+                                         funcname "\\s-*(")
+                                 (save-excursion
+                                   (set-buffer buf)
+                                   (buffer-substring (point-min)
+                                                     (point-max))))))
+          (setq got buf)))
+    got))
 
 (provide 'pdbtrack)
