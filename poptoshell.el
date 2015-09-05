@@ -134,7 +134,7 @@ Further,
               (pop-to-buffer target-shell-buffer-name t))))
       (if (not (comint-check-proc (current-buffer)))
           (start-shell-in-buffer (buffer-name (current-buffer))))
-      ))
+      )
     ;; If the destination buffer has a stopped process, resume it:
     (let ((process (get-buffer-process (current-buffer))))
       (if (and process (equal 'stop (process-status process)))
@@ -146,6 +146,7 @@ Further,
       (and (get-buffer-process from)
            (goto-char (process-mark (get-buffer-process from)))))
     )
+)
 
 (defun my-walk-windows (func &optional minibuf all-frames selected)
   (if (featurep 'xemacs)
