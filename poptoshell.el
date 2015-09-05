@@ -146,7 +146,7 @@ Further,
       (and (get-buffer-process from)
            (goto-char (process-mark (get-buffer-process from)))))
     )
-  )
+
 (defun my-walk-windows (func &optional minibuf all-frames selected)
   (if (featurep 'xemacs)
       (walk-windows func minibuf all-frames (selected-device))
