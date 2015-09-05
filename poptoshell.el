@@ -132,21 +132,9 @@ Further,
           (if (not (string= (buffer-name (current-buffer))
                             target-shell-buffer-name))
               (pop-to-buffer target-shell-buffer-name t))))
-      (condition-case err
-          (if (not (comint-check-proc (current-buffer)))
-              (start-shell-in-buffer (buffer-name (current-buffer))))
-        (file-error
-         ;; Whoops - can't get to the default directory, keep trying
-         ;; superior ones till we get somewhere that's acceptable:
-         (while (and (not (string= default-directory ""))
-                     (not (condition-case err (progn (shell) t)
-                            (file-error nil))))
-           (setq default-directory
-                 (file-name-directory
-                  (substring default-directory
-                             0
-                             (1- (length default-directory)))))))
-        ))
+      (if (not (comint-check-proc (current-buffer)))
+          (start-shell-in-buffer (buffer-name (current-buffer))))
+      ))
     ;; If the destination buffer has a stopped process, resume it:
     (let ((process (get-buffer-process (current-buffer))))
       (if (and process (equal 'stop (process-status process)))
