@@ -1,4 +1,4 @@
-;; xsel.el -- copy and paste from emacs tty sessions, using xsel
+;; xsel.el -- X copy and paste emacs region from emacs tty sessions, using xsel
 
 ;; Copyright (C) 2015 Free Software Foundation, Inc. and Ken Manheimer
 
@@ -12,9 +12,9 @@
 ;;
 ;; If xsel is installed and DISPLAY is working, use `klm:xsel-copy' to copy
 ;; the region to the X clipboard and `klm:xsel-paste' to paste the contents
-;; of the clipboard at point. (The advantage of the latter over just usign
-;; X paste into the terminal is `klm:xsel-paste' looks unitary, to emacs,
-;; rather than being continuous input.)
+;; of the clipboard at point. (The advantage of the latter over regular X
+;; mouse paste is `klm:xsel-paste' looks unitary, to emacs, rather than
+;; the mouse paste's continuous, parsed/indented/auto-parenned/etc input.)
 
 
 (defun klm:xsel-check-get-DISPLAY (&optional arg)
