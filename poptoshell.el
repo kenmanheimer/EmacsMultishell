@@ -6,7 +6,7 @@
 ;; Maintainer: Ken Manheimer <ken dot manheimer at gmail...>
 ;; Created: 1999 -- first public release
 ;; Keywords: processes
-;; Website: http://myriadicity.net/software-and-systems/craft/crafty-hacks/emacs-sundries/poptoshell.el/view
+;; Website: https://github.com/kenmanheimer/EmacsUtils
 ;;
 ;;; Commentary:
 ;;
