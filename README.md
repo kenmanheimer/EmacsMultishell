@@ -43,7 +43,22 @@ I've been using Gnu Emacs since it was publicly available (1985?), and have cont
   between spending the time cleaning versus spending the time releasing it, I'm
   choosing to release.)
 
+* **[xsel.el](./xsel.el)**
+
+  X copy and paste emacs region from emacs tty sessions, using xsel
+
+  If xsel is installed and DISPLAY is working, use `klm:xsel-copy' to copy
+  the region to the X clipboard and `klm:xsel-paste' to paste the contents
+  of the clipboard at point. (The advantage of the latter over regular X
+  mouse paste is `klm:xsel-paste' looks unitary, to emacs, rather than
+  the mouse paste's continuous, parsed/indented/auto-parenned/etc input.)
+
 * **[pdbtrack.el](./pdbtrack.el)**
+
+  [I've moved my standalone version of pdbtrack aside. I hadn't realized 
+  that the version that I derived this code from lacks my source-buffer 
+  fallback provisions. It looks like I'm going to have to do some
+  unraveling to reconstruct the best basis.]
 
   Add sensitivity to comint shells so the source file lines are automatically
   presented in a separate window when the Python PDB debugger steps to them.
