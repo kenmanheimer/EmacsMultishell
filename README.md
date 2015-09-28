@@ -45,13 +45,17 @@ I've been using Gnu Emacs since it was publicly available (1985?), and have cont
 
 * **[xsel.el](./xsel.el)**
 
-  X copy and paste emacs region from emacs tty sessions, using xsel
+  X copy and paste emacs region from emacs tty sessions, using a shell command.
 
-  If xsel is installed and DISPLAY is working, use `klm:xsel-copy' to copy
-  the region to the X clipboard and `klm:xsel-paste' to paste the contents
-  of the clipboard at point. (The advantage of the latter over regular X
-  mouse paste is `klm:xsel-paste' looks unitary, to emacs, rather than
-  the mouse paste's continuous, parsed/indented/auto-parenned/etc input.)
+  If xsel or linux or cygwin equivalent is installed, and DISPLAY is
+  working, use `klm:xsel-copy` to copy the region to the X clipboard and
+  `klm:xsel-paste` to paste the contents of the clipboard at point.
+
+  One benefit is that `klm:xsel-paste` pastes are single units, rather than
+  a sequence of individual keystrokes that constitute regular X pastes to a
+  terminal. This avoids layers of parsing, indenting, auto-paren insertion,
+  and so forth. (You can always do a regular X paste on occasions when you
+  want that processing.)
 
 * **[pdbtrack.el](./pdbtrack.el)**
 

@@ -1,5 +1,7 @@
 ;; xsel.el -- X copy and paste emacs region from emacs tty sessions, using xsel
 
+;; TODO: Check alternative: http://emacs.stackexchange.com/a/819/9668
+
 ;; Copyright (C) 2015 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken dot manheimer at gmail...>
@@ -32,28 +34,24 @@ Returns the resulting value for DISPLAY."
   )
 
 (defun klm:xsel-copy (from to)
-  "Place contents of region in X copy/paste buffer, using `xsel'."
+  "Place contents of region in X copy/paste buffer, using shell command."
   (interactive "r")
   (when (klm:xsel-check-get-DISPLAY)
-    (let ((temp-file-name (make-temp-file "klm:xsel-copy_"))
-          (content (buffer-substring from to)))
-      (with-temp-file temp-file-name (insert-string content))
-      ;; Didn't get call-process to work, and would have to do error handling.
-      ;; (call-process "/usr/bin/xsel" temp-file-name nil nil
-      ;;               "--input" "--clipboard")
-      (shell-command (format "/usr/bin/xsel --input --clipboard < %s"
-                             temp-file-name))
-      (delete-file temp-file-name nil)
+    (let ((command (cond ((eq system-type 'darwin) "pbcopy")
+                         ((eq system-type 'cygwin) "putclip")
+                         ;; Linux &c:
+                         (t "xsel --input --clipboard"))))
+      (shell-command-on-region from to command)
+      (deactivate-mark)
       )))
 
 (defun klm:xsel-paste ()
-  "Place contents of region in X copy/paste buffer, using `xsel'."
+  "Place contents of region in X copy/paste buffer, using shell command."
   (interactive "")
   (when (klm:xsel-check-get-DISPLAY)
-    (let (contents)
-      (shell-command "/usr/bin/xsel --output --clipboard")
-      (save-current-buffer
-        (set-buffer "*Shell Command Output*")
-        (setq contents (buffer-substring (point-min)(point-max))))
-      (insert-string contents)
+    (let ((command (cond ((eq system-type 'darwin) "pbpaste")
+                         ((eq system-type 'cygwin) "getclip")
+                         ;; Linux &c:
+                         (t "xsel --output --clipboard"))))
+      (shell-command command 1)
       )))
