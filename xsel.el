@@ -29,7 +29,7 @@ Returns the resulting value for DISPLAY."
   (when (or arg (not (getenv "DISPLAY")))
     (setenv "DISPLAY"
             (read-from-minibuffer "DISPLAY: "
-                                  (or (getenv "DISPLAY") "localhost:10.0"))))
+                                  (or (getenv "DISPLAY") ":10.0"))))
   (getenv "DISPLAY")
   )
 
@@ -54,4 +54,5 @@ Returns the resulting value for DISPLAY."
                          ;; Linux &c:
                          (t "xsel --output --clipboard"))))
       (shell-command command 1)
+      (exchange-point-and-mark)
       )))
