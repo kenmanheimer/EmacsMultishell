@@ -34,9 +34,12 @@ Returns the resulting value for DISPLAY."
   )
 
 (defun klm:xsel-copy (from to)
-  "Place contents of region in X copy/paste buffer, using shell command."
+  "Place contents of region in X copy/paste buffer, using shell command.
+
+With universal argument, prompt to set DISPLAY."
+
   (interactive "r")
-  (when (klm:xsel-check-get-DISPLAY)
+  (when (klm:xsel-check-get-DISPLAY current-prefix-arg)
     (let ((command (cond ((eq system-type 'darwin) "pbcopy")
                          ((eq system-type 'cygwin) "putclip")
                          ;; Linux &c:
@@ -48,7 +51,7 @@ Returns the resulting value for DISPLAY."
 (defun klm:xsel-paste ()
   "Place contents of region in X copy/paste buffer, using shell command."
   (interactive "")
-  (when (klm:xsel-check-get-DISPLAY)
+  (when (klm:xsel-check-get-DISPLAY current-prefix-arg)
     (let ((command (cond ((eq system-type 'darwin) "pbpaste")
                          ((eq system-type 'cygwin) "getclip")
                          ;; Linux &c:
