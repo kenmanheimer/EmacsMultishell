@@ -1,10 +1,13 @@
+;; From https://gist.github.com/offby1/1240799
+
 ;; There's something similar (but fancier) in vc-git.el: vc-git-grep
 
 ;; -I means don't search through binary files
 
 ;; --no-color, oddly enough, is required to allow emacs to colorize the output
 
-(defcustom git-grep-switches "--extended-regexp -I -n --ignore-case --no-color"
+(defcustom git-grep-switches
+  "git --no-pager grep --extended-regexp -I -n --ignore-case --no-color"
   "Switches to pass to `git grep'."
   :type 'string)
 
@@ -27,7 +30,7 @@
        (list (read-shell-command "Run git-grep (like this): "
                                  (format (concat
                                           "cd %s && "
-                                          "git grep %s -e %s")
+                                          "%s -e %s")
                                          root
                                          git-grep-switches
                                          (let ((thing (and
@@ -47,3 +50,5 @@
                                  'git-grep-history))))
     (let ((grep-use-null-device nil))
       (grep command-args))))
+
+(provide 'gist-git-grep)
