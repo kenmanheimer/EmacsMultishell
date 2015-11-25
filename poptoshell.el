@@ -177,7 +177,9 @@ Return indicated default on empty input."
                                       (substring name 1 (1- (length
                                                              name)))
                                     name))))
-                          (buffer-list))))))
+                          (buffer-list)))
+          nil
+          'confirm)))
     (if (not (string= got "")) (bracket-asterisks got) default)))
 
 (defun bracket-asterisks (name)
