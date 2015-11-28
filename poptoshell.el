@@ -73,14 +73,21 @@ Further,
          (temp (if arg
                    (read-shell-buffer-name-sans
                     (format "Shell buffer name [%s]%s "
-                            pop-to-shell-primary-name
+                            (substring-no-properties
+                             pop-to-shell-primary-name
+                             1 (- (length pop-to-shell-primary-name) 1))
                             (if doublearg " <==" ":"))
                     pop-to-shell-primary-name)
                  pop-to-shell-primary-name))
          ;; Make sure it is bracketed with asterisks; silly.
-         (target-shell-buffer-name (if (string= temp "")
-                                       pop-to-shell-primary-name
-                                     (bracket-asterisks temp)))
+         use-default-dir
+         (target-shell-buffer-name
+          ;; Derive target name, and default-dir if any, from temp.
+          (cond ((string= temp "") pop-to-shell-primary-name)
+                ((string-match "^\\*\\(/.*/\\)\\(.*\\)\\*" temp)
+                 (setq use-default-dir (match-string 1 temp))
+                 (bracket-asterisks (match-string 2 temp)))
+                (t (bracket-asterisks temp))))
          (curr-buff-proc (or (get-buffer-process from)
                              (and (fboundp 'rcirc-buffer-process)
                                   (rcirc-buffer-process))
@@ -94,8 +101,10 @@ Further,
          (inwin nil)
          (num 0)
          already-there)
+
     (when doublearg
       (setq pop-to-shell-primary-name target-shell-buffer-name))
+
     (if (and curr-buff-proc
              (not arg)
              (eq from buff)
@@ -135,6 +144,13 @@ Further,
       (if (not (comint-check-proc (current-buffer)))
           (start-shell-in-buffer (buffer-name (current-buffer))))
       )
+
+    ;; We're in the buffer.
+
+    ;; If we have a use-default-dir, impose it:
+    (when use-default-dir
+        (cd use-default-dir))
+
     ;; If the destination buffer has a stopped process, resume it:
     (let ((process (get-buffer-process (current-buffer))))
       (if (and process (equal 'stop (process-status process)))
