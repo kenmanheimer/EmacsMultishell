@@ -20,8 +20,6 @@
 (require 'comint)
 (require 'shell)
 
-(provide 'poptoshell)
-
 (defcustom pop-to-shell-frame nil
   "*If non-nil, jump to a frame already showing the shell, if any.
 
@@ -34,13 +32,13 @@ Otherwise, open a new window in the current frame."
 
 (defun pop-to-shell (&optional arg)
 
-  "Navigate to or within shell buffers.
+  "Navigate to or within local and remote shell buffers.
 
-Use universal arguments to choose between alternate shell
-buffers, select which is default, and using Emacs tramp syntax,
+Use universal arguments to launch and choose between alternate
+shell buffers, select which is default.  With Emacs tramp syntax,
 launch or return to a remote shell.
 
-Basic operation:
+==== Basic operation:
 
  - If the current buffer is associated with a subprocess (that is
    not among those named on `non-interactive-process-buffers'),
@@ -63,7 +61,7 @@ Basic operation:
 If the resulting buffer's shell process was stopped or
 terminated, it's resumed.
 
-Use the universal arg to start and select between named shell buffers:
+===== Universal arg to start and select between named shell buffers:
 
 You can name alternate shell buffers to create or return to using
 one or two universal arguments:
@@ -78,17 +76,17 @@ one or two universal arguments:
    multiple shell buffers.
 
  - A double universal argument will prompt for the name *and* set
-   the default to that name, making the target shell subsequently
+   the default to that name, so the target shell becomes the
    primary.
 
+===== Select starting directory and remote:
 
-Launching remote shells:
+The shell buffer name you give to the prompt for a universal arg
+can include a preceding path. That will be used for the startup
+directory - and can include tramp remote syntax to specify a
+remote shell. If there is an element after a final '/', that's used for the buffer name. Otherwise, the host, domain, or path is used.
 
-When using a universal arg to specify a shell buffer name, you
-can include a tramp-style remote specification before the name
-to start a remote shell.
-
-For example: '/ssh:myriadicity.net:/myr' or
+For example: '/ssh:myriadicity.net:/' or
 '/ssh:myriadicity.net|sudo:root@myriadicity.net:/\#myr', etc.
 The stuff between the '/' slashes will be used for
 starting the remote shell, and the stuff after the second
@@ -117,7 +115,15 @@ slash will be used for the shell name."
           (cond ((string= temp "") pop-to-shell-primary-name)
                 ((string-match "^\\*\\(/.*/\\)\\(.*\\)\\*" temp)
                  (setq use-default-dir (match-string 1 temp))
-                 (bracket-asterisks (match-string 2 temp)))
+                 (bracket-asterisks 
+                  (if (string= (match-string 2 temp) "")
+                      (let ((v (tramp-dissect-file-name
+                                use-default-dir)))
+                        (or (tramp-file-name-host v)
+                            (tramp-file-name-domain v)
+                            (tramp-file-name-localname v)
+                            use-default-dir))
+                    (match-string 2 temp))))
                 (t (bracket-asterisks temp))))
          (curr-buff-proc (or (get-buffer-process from-buffer)
                              (and (fboundp 'rcirc-buffer-process)
@@ -266,3 +272,5 @@ on empty input."
                                       '("-i")))))
     (set-buffer buffer-name)
     (shell-mode)))
+
+(provide 'poptoshell)
