@@ -34,44 +34,75 @@ Otherwise, open a new window in the current frame."
 
 (defun pop-to-shell (&optional arg)
 
-  "Navigate to or within a shell buffer.
+  "Navigate to or within shell buffers.
 
-Use this command from within a shell subprocess buffer to get to
-the shell input point, or from outside a shell buffer to pop to a
-shell buffer, without displacing the current buffer.
+Use universal arguments to choose between alternate shell
+buffers, select which is default, and using Emacs tramp syntax,
+launch or return to a remote shell.
 
-Specifically, like 'shell' command but:
+Basic operation:
 
- - If the current buffer is associated with a subprocess (and one not
-   among those named on `non-interactive-process-buffers'), then focus
-   is moved to the process input point, else...
- - Goes to a window that is already showing a shell buffer, if any.
-   In this case, the cursor is left in its prior position in the shell
-   buffer. (Repeating the command will then go to the process input
-   point, by the behavior mentioned just before this.) Else...
- - Pops open a new shell buffer, if none is around.
+ - If the current buffer is associated with a subprocess (that is
+   not among those named on `non-interactive-process-buffers'),
+   then focus is moved to the process input point.
 
-In any cases where the shell buffer already existed, the process
-is resumed if it was stopped.
+   \(You can use a universal argument go to a different shell
+   buffer when already in a buffer that has a process - see
+   below.)
 
-Further,
+ - If not in a shell buffer (or with universal argument), go to a
+   window that is already showing the (a) shell buffer, if any.
 
- - With a universal argument, the user is prompted for the buffer name to
-   use (it will be bracketed by asterisks - a regrettable comint
-   requirement), defaulting to 'shell'.  This makes it easy to switch
-   between multiple process-associated buffers.
- - A double universal argument will set the default target shell buffer name
-   to the provided one, making the target shell subsequently primary."
+   In this case, the cursor is left in its prior position in the
+   shell buffer. (Repeating the command will then go to the
+   process input point, by the previous behavior.)
+
+ - Otherwise, start a new shell buffer, using the current
+   directory as the working directory..
+
+If the resulting buffer's shell process was stopped or
+terminated, it's resumed.
+
+Use the universal arg to start and select between named shell buffers:
+
+You can name alternate shell buffers to create or return to using
+one or two universal arguments:
+
+ - With a single universal argument, prompt for the buffer name
+   to use (without the asterisks that shell mode will put around
+   the name), defaulting to 'shell'.
+
+   Completion is available.
+
+   This combination makes it easy to start and switch between
+   multiple shell buffers.
+
+ - A double universal argument will prompt for the name *and* set
+   the default to that name, making the target shell subsequently
+   primary.
+
+
+Launching remote shells:
+
+When using a universal arg to specify a shell buffer name, you
+can include a tramp-style remote specification before the name
+to start a remote shell.
+
+For example: '/ssh:myriadicity.net:/myr' or
+'/ssh:myriadicity.net|sudo:root@myriadicity.net:/\#myr', etc.
+The stuff between the '/' slashes will be used for
+starting the remote shell, and the stuff after the second
+slash will be used for the shell name."
 
   (interactive "P")
 
   (if (not (boundp 'shell-buffer-name))
       (setq shell-buffer-name "*shell*"))
 
-  (let* ((from (current-buffer))
+  (let* ((from-buffer (current-buffer))
          (doublearg (equal arg '(16)))
          (temp (if arg
-                   (read-shell-buffer-name-sans
+                   (read-bare-shell-buffer-name
                     (format "Shell buffer name [%s]%s "
                             (substring-no-properties
                              pop-to-shell-primary-name
@@ -88,15 +119,15 @@ Further,
                  (setq use-default-dir (match-string 1 temp))
                  (bracket-asterisks (match-string 2 temp)))
                 (t (bracket-asterisks temp))))
-         (curr-buff-proc (or (get-buffer-process from)
+         (curr-buff-proc (or (get-buffer-process from-buffer)
                              (and (fboundp 'rcirc-buffer-process)
                                   (rcirc-buffer-process))
                              (and (boundp 'erc-process)
                                   erc-process)))
-         (buff (if (and curr-buff-proc
-                        (not (member (buffer-name from)
+         (target-buffer (if (and curr-buff-proc
+                        (not (member (buffer-name from-buffer)
                                      non-interactive-process-buffers)))
-                   from
+                   from-buffer
                  (get-buffer target-shell-buffer-name)))
          (inwin nil)
          (num 0)
@@ -105,45 +136,35 @@ Further,
     (when doublearg
       (setq pop-to-shell-primary-name target-shell-buffer-name))
 
-    (if (and curr-buff-proc
-             (not arg)
-             (eq from buff)
-             (not (eq target-shell-buffer-name (buffer-name from))))
-        ;; We're in a buffer with a shell process, but not named shell
-        ;; - stick with it, but go to end:
-        (setq already-there t)
-      (cond
-                                        ; Already in the shell buffer:
-       ((string= (buffer-name) target-shell-buffer-name)
-        (setq already-there t))
-       ((or (not buff)
-            (not (catch 'got-a-vis
-                   (my-walk-windows
-                    (function (lambda (win)
-                                (if (and (eq (window-buffer win) buff)
-                                         (equal (frame-parameter
-                                                 (selected-frame) 'display)
-                                                (frame-parameter
-                                                 (window-frame win) 'display)))
-                                    (progn (setq inwin win)
-                                           (throw 'got-a-vis win))
-                                  (setq num (1+ num)))))
-                    nil 'visible t)
-                   nil)))
-        ;; No preexisting shell buffer, or not in a visible window:
-        (pop-to-buffer target-shell-buffer-name pop-up-windows))
+    ;; Situate:
+
+    (cond 
+
+     ((and curr-buff-proc
+           (not arg)
+           (eq from-buffer target-buffer)
+           (not (eq target-shell-buffer-name (buffer-name from-buffer))))
+      ;; In a shell buffer, but not named - stay in buffer, but go to end.
+      (setq already-there t))
+
+     ((string= (buffer-name) target-shell-buffer-name)
+      ;; Already in the specified shell buffer:
+      (setq already-there t))
+
+     ((or (not target-buffer)
+          (not (pop-to-shell:visible target-buffer)))
+      ;; No preexisting shell buffer, or not in a visible window:
+      (pop-to-buffer target-shell-buffer-name pop-up-windows))
+
        ;; Buffer exists and already has a window - jump to it:
-       (t (if (and pop-to-shell-frame
-                   inwin
-                   (not (equal (window-frame (selected-window))
-                               (window-frame inwin))))
-              (select-frame-set-input-focus (window-frame inwin)))
-          (if (not (string= (buffer-name (current-buffer))
-                            target-shell-buffer-name))
-              (pop-to-buffer target-shell-buffer-name t))))
-      (if (not (comint-check-proc (current-buffer)))
-          (start-shell-in-buffer (buffer-name (current-buffer))))
-      )
+     (t (if (and pop-to-shell-frame
+                 inwin
+                 (not (equal (window-frame (selected-window))
+                             (window-frame inwin))))
+            (select-frame-set-input-focus (window-frame inwin)))
+        (if (not (string= (buffer-name (current-buffer))
+                          target-shell-buffer-name))
+            (pop-to-buffer target-shell-buffer-name t))))
 
     ;; We're in the buffer.
 
@@ -151,36 +172,45 @@ Further,
     (when use-default-dir
         (cd use-default-dir))
 
+    ;; Activate:
+
+    (if (not (comint-check-proc (current-buffer)))
+        (start-shell-in-buffer (buffer-name (current-buffer))))
+
     ;; If the destination buffer has a stopped process, resume it:
     (let ((process (get-buffer-process (current-buffer))))
       (if (and process (equal 'stop (process-status process)))
           (continue-process process)))
     (if (and (not already-there)
-             (not (equal (current-buffer) from)))
+             (not (equal (current-buffer) from-buffer)))
         t
       (goto-char (point-max))
-      (and (get-buffer-process from)
-           (goto-char (process-mark (get-buffer-process from)))))
+      (and (get-buffer-process from-buffer)
+           (goto-char (process-mark (get-buffer-process from-buffer)))))
     )
 )
 
-(defun my-walk-windows (func &optional minibuf all-frames selected)
-  (if (featurep 'xemacs)
-      (walk-windows func minibuf all-frames (selected-device))
-    (walk-windows func minibuf all-frames)))
+(defun pop-to-shell:visible (buffer)
+  "True if buffer is in a visible window."
+  (catch 'got-a-vis
+    (walk-windows
+     (function (lambda (win)
+                 (if (and (eq (window-buffer win) buffer)
+                          (equal (frame-parameter
+                                  (selected-frame) 'display)
+                                 (frame-parameter
+                                  (window-frame win) 'display)))
+                     (progn (setq inwin win)
+                            (throw 'got-a-vis win))
+                   (setq num (1+ num)))))
+     nil 'visible)
+    nil))
 
-(defun my-set-mouse-position (window x y)
-  "Adapt for both xemacs and fsf emacs"
-  (if (string= (substring (emacs-version) 0 6) "XEmacs")
-      (set-mouse-position window x y)
-    (let ((frame (window-frame window)))
-      (select-frame-set-input-focus frame))))
+(defun read-bare-shell-buffer-name (prompt default)
+  "PROMPT for shell buffer name, sans asterisks.
 
-
-(defun read-shell-buffer-name-sans (prompt default)
-  "Obtain name without asterisks of shell buffer, adding the asterisks.
-
-Return indicated default on empty input."
+Return the supplied name bracketed with the asterisks, or specified DEFAULT
+on empty input."
   (let ((got
          (completing-read
           prompt
@@ -206,7 +236,7 @@ Return indicated default on empty input."
       (setq name (concat name "*")))
   name)
 (defun unbracket-asterisks (name)
-  "Return a copy of name, removing asterisks at beg and end, if any."
+  "Return a copy of name, removing asterisks, if any, at beginning and end."
   (if (string= (substring name 0 1) "*")
       (setq name (substring name 1)))
   (if (string= (substring name -1) "*")
