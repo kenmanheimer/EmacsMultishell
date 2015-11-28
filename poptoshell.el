@@ -58,8 +58,8 @@ launch or return to a remote shell.
  - Otherwise, start a new shell buffer, using the current
    directory as the working directory..
 
-If the resulting buffer's shell process was stopped or
-terminated, it's resumed.
+If the resulting buffer exists and its shell process was
+disconnected or otherwise stopped, it's resumed.
 
 ===== Universal arg to start and select between named shell buffers:
 
@@ -135,8 +135,7 @@ slash will be used for the shell name."
                                      non-interactive-process-buffers)))
                    from-buffer
                  (get-buffer target-shell-buffer-name)))
-         (inwin nil)
-         (num 0)
+         inwin
          already-there)
 
     (when doublearg
@@ -158,7 +157,7 @@ slash will be used for the shell name."
       (setq already-there t))
 
      ((or (not target-buffer)
-          (not (pop-to-shell:visible target-buffer)))
+          (not (setq inwin (get-visible-win-for-buffer target-buffer))))
       ;; No preexisting shell buffer, or not in a visible window:
       (pop-to-buffer target-shell-buffer-name pop-up-windows))
 
@@ -196,8 +195,8 @@ slash will be used for the shell name."
     )
 )
 
-(defun pop-to-shell:visible (buffer)
-  "True if buffer is in a visible window."
+(defun get-visible-win-for-buffer (buffer)
+  "Return visible window containing buffer."
   (catch 'got-a-vis
     (walk-windows
      (function (lambda (win)
@@ -206,9 +205,7 @@ slash will be used for the shell name."
                                   (selected-frame) 'display)
                                  (frame-parameter
                                   (window-frame win) 'display)))
-                     (progn (setq inwin win)
-                            (throw 'got-a-vis win))
-                   (setq num (1+ num)))))
+                     (throw 'got-a-vis win))))
      nil 'visible)
     nil))
 
