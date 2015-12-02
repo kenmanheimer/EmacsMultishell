@@ -19,11 +19,11 @@ I've been using Gnu Emacs since it was publicly available (1985?), and have cont
     * For a remote shell, use tramp-style remote path!
       * Without an explicit name following the last slash, the host name is
         used as the shell name. But the trailing name makes it easy to
-        distinguish, eg, root shells:
-        > `/ssh:myserver.net|sudo:root@myserver.net:/#myserver`
-      * Since the current directory is used by default:
-        * if the remote shell has been disconnected, it's reconnected by default
-        * visiting files from a remote shell buffer visits relative to the remote host!
+        distinguish, eg, root shells: `/ssh:myserver.net|sudo:root@myserver.net:/#myserver`
+      * Since the shell's current directory is used by default:
+        * If the remote shell has been disconnected, it's reconnected by default, in the same directory where you left off
+          * (So I exit remote shells I'm done with, but keep the buffers around - I just resume by Meta-space <shell-name>.)
+        * Visiting files from a remote shell buffer visits relative to the remote host!
     * Change which shell is the session default by using a doubled
       universal argument.
       * Handy for a kind of current-project modality, easily changing
