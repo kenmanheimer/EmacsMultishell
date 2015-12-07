@@ -125,11 +125,7 @@ slash will be used for the shell name."
                             use-default-dir))
                     (match-string 2 temp))))
                 (t (bracket-asterisks temp))))
-         (curr-buff-proc (or (get-buffer-process from-buffer)
-                             (and (fboundp 'rcirc-buffer-process)
-                                  (rcirc-buffer-process))
-                             (and (boundp 'erc-process)
-                                  erc-process)))
+         (curr-buff-proc (get-buffer-process from-buffer))
          (target-buffer (if (and curr-buff-proc
                         (not (member (buffer-name from-buffer)
                                      non-interactive-process-buffers)))
