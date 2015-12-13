@@ -64,7 +64,7 @@ disconnected or otherwise stopped, it's resumed.
 ===== Universal arg to start and select between named shell buffers:
 
 You can name alternate shell buffers to create or return to using
-one or two universal arguments:
+single or doubled universal arguments:
 
  - With a single universal argument, prompt for the buffer name
    to use (without the asterisks that shell mode will put around
@@ -213,6 +213,7 @@ on empty input."
   (let ((got
          (completing-read
           prompt
+          ;; COLLECTION:
           (remq nil
                   (mapcar (lambda (buffer)
                             (let ((name (buffer-name buffer)))
@@ -223,8 +224,15 @@ on empty input."
                                                              name)))
                                     name))))
                           (buffer-list)))
+          ;; PREDICATE:
           nil
-          'confirm)))
+          ;; REQUIRE-MATCH:
+          'confirm
+          ;; INITIAL-INPUT:
+          nil
+          ;; HIST:
+          'pop-to-shell-buffer-name-history
+          )))
     (if (not (string= got "")) (bracket-asterisks got) default)))
 
 (defun bracket-asterisks (name)
