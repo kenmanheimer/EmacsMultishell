@@ -79,7 +79,7 @@ single or doubled universal arguments:
    the default to that name, so the target shell becomes the
    primary.
 
-===== Select starting directory and remote:
+===== Select starting directory and remote host:
 
 The shell buffer name you give to the prompt for a universal arg
 can include a preceding path. That will be used for the startup
@@ -90,7 +90,17 @@ For example: '/ssh:myriadicity.net:/' or
 '/ssh:myriadicity.net|sudo:root@myriadicity.net:/\#myr', etc.
 The stuff between the '/' slashes will be used for
 starting the remote shell, and the stuff after the second
-slash will be used for the shell name."
+slash will be used for the shell name.
+
+===== Persisting your alternate shell buffer names and paths:
+
+You can use emacs builtin SaveHist to preserve your alternate
+shell buffer names and paths. Customize the savehist group and:
+
+1. Activate "Savehist Mode"
+2. Add `pop-to-shell-buffer-name-history' to "Savehist Additional Variables".
+3. Save.
+"
 
   (interactive "P")
 
@@ -214,16 +224,7 @@ on empty input."
          (completing-read
           prompt
           ;; COLLECTION:
-          (remq nil
-                  (mapcar (lambda (buffer)
-                            (let ((name (buffer-name buffer)))
-                              (if (with-current-buffer buffer
-                                         (eq major-mode 'shell-mode))
-                                  (if (> (length name) 2)
-                                      (substring name 1 (1- (length
-                                                             name)))
-                                    name))))
-                          (buffer-list)))
+          (pop-to-shell-buffer-name-candidates)
           ;; PREDICATE:
           nil
           ;; REQUIRE-MATCH:
@@ -234,6 +235,25 @@ on empty input."
           'pop-to-shell-buffer-name-history
           )))
     (if (not (string= got "")) (bracket-asterisks got) default)))
+
+(defun pop-to-shell-buffer-name-candidates ()
+  "Return a list of the shell buffer name candidates.
+
+The list consists of the combination of existing shell buffer
+names plus the names in the history (which can include
+non-existent buffers, from saved history)."
+ (append (remq nil
+               (mapcar (lambda (buffer)
+                         (let ((name (buffer-name buffer)))
+                           (if (with-current-buffer buffer
+                                 (eq major-mode 'shell-mode))
+                               (if (> (length name) 2)
+                                   (substring name 1 (1- (length
+                                                          name)))
+                                 name))))
+                       (buffer-list)))
+         pop-to-shell-buffer-name-history)
+)
 
 (defun bracket-asterisks (name)
   "Return a copy of name, ensuring it has an asterisk at the beginning and end."
