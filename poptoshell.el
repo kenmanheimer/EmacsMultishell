@@ -13,7 +13,21 @@
 ;; I bind to M-<space>, via eg: (global-set-key "\M- " 'pop-to-shell)
 ;; See the pop-to-shell docstring for details.
 ;;
-;; klm, 02/09/1999.
+;; TODO:
+;; * Preservable (savehist) history that associates names with paths
+;;   - Using an association list between names and paths
+;;   - Populates 
+;; * Customize provision for activating the saves
+;;   - Customize entry has warning about activating savehist
+;;   - Adds the name/path association list to savehist-additional-variables
+;;   - Activates savehist, if inactive
+;; * Provide a basic means to remove and change entries
+;;   - Meta-e in prompting context goes to edit-current-entry mode
+;;   - Edit name: xyz <CR> path: /ssh:...
+;;   - CR in the editing phase calls the right action
+;;   - Changes to the entry are preserved in the association for that entry
+;;   - Deletion of either name or path removes the entire entry
+
 
 (defvar non-interactive-process-buffers '("*compilation*" "*grep*"))
 
