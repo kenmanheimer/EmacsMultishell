@@ -90,7 +90,17 @@ For example: '/ssh:myriadicity.net:/' or
 '/ssh:myriadicity.net|sudo:root@myriadicity.net:/\#myr', etc.
 The stuff between the '/' slashes will be used for
 starting the remote shell, and the stuff after the second
-slash will be used for the shell name."
+slash will be used for the shell name.
+
+===== Persisting your alternate shell buffer names and paths:
+
+You can use emacs builtin SaveHist to preserve your alternate
+shell buffer names and paths across emacs sessions. To do so,
+customize the `savehist' group, and:
+
+1. Add `pop-to-shell-buffer-name-history' to Savehist Additional Variables.
+2. Activate Savehist Mode, if not already activated.
+3. Save."
 
   (interactive "P")
 
