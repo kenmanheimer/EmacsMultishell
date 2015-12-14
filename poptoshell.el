@@ -95,12 +95,12 @@ slash will be used for the shell name.
 ===== Persisting your alternate shell buffer names and paths:
 
 You can use emacs builtin SaveHist to preserve your alternate
-shell buffer names and paths. Customize the savehist group and:
+shell buffer names and paths across emacs sessions. To do so,
+customize the `savehist' group, and:
 
-1. Activate "Savehist Mode"
-2. Add `pop-to-shell-buffer-name-history' to "Savehist Additional Variables".
-3. Save.
-"
+1. Add `pop-to-shell-buffer-name-history' to Savehist Additional Variables.
+2. Activate Savehist Mode
+3. Save."
 
   (interactive "P")
 
