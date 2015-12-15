@@ -29,6 +29,8 @@ Otherwise, open a new window in the current frame."
 
 (defvar pop-to-shell-primary-name "*shell*"
   "Shell name to use for un-modified pop-to-shell buffer target.")
+(defvar pop-to-shell-buffer-name-history nil
+  "Distinct pop-to-shell completion history container.")
 
 (defun pop-to-shell (&optional arg)
 
