@@ -1,4 +1,4 @@
-;;; poptoshell.el --- get to the process buffer and input mark
+;;; poptoshell.el --- easily manage interaction with multiple shells
 
 ;; Copyright (C) 1999-2011 Free Software Foundation, Inc. and Ken Manheimer
 
@@ -10,8 +10,8 @@
 ;;
 ;;; Commentary:
 ;;
-;; I bind to M-<space>, via eg: (global-set-key "\M- " 'pop-to-shell)
 ;; See the pop-to-shell docstring for details.
+;; I bind to M-<space>, via eg: (global-set-key "\M- " 'pop-to-shell)
 ;;
 ;; TODO:
 ;; * Preservable (savehist) history that associates names with paths
@@ -27,19 +27,74 @@
 ;;   - CR in the editing phase calls the right action
 ;;   - Changes to the entry are preserved in the association for that entry
 ;;   - Deletion of either name or path removes the entire entry
-
-
-(defvar non-interactive-process-buffers '("*compilation*" "*grep*"))
+;; * Change name to multishell.
+;;   - Prefix will be multish
+;;   - Most functions will be prefixed, eg multish:pop-to-shell
+;; * Customize provision for keybinding
+;;   - See allout.el allout-command-prefix for dynamic customization example.
 
 (require 'comint)
 (require 'shell)
 
-(defcustom pop-to-shell-frame nil
+(defgroup multishell nil
+  "Allout extension that highlights outline structure graphically.
+
+Customize `allout-widgets-auto-activation' to activate allout-widgets
+with allout-mode."
+  :group 'shell)
+
+(defcustom multishell:non-interactive-process-buffers
+  '("*compilation*" "*grep*")
+  "Buffers with processes but not for interaction."
+  :type '(repeat string)
+  :group 'multishell)
+(defcustom multishell:command-key "\M- "
+  "Choose a key to use for "
+  :type 'string
+  :group 'multishell)
+(defun multishell:assert-command-key-or-not (&optional force)
+  "Activate multishell command key if customizations dictate.
+
+If optional FORCE is true and customizations dictate, globally
+unbind the key.
+
+* `multishell:assert-command-key' - Establish or keep the binding if true
+* `multishell:command-key' - Which key to use."
+  (if (boundp 'multishell:assert-command-key)
+      (cond ((and multishell:assert-command-key multishell:command-key)
+             (global-set-key multishell:command-key 'pop-to-shell))
+            ((and force (not multishell:assert-command-key))
+             (global-unset-key multishell:command-key)))
+    )
+  )
+(defun multishell:do-assert-command-key (option-name option-value)
+  "If `multishell:assert-command-key', globally bind pop-to-shell.
+
+Use keybinding identified by `multishell:command-key'."
+  (multishell:assert-command-key-or-not (not option-value))
+  )
+(defcustom multishell:assert-command-key nil
+  "Set this to impose the `multishell-command-key binding."
+  :type 'boolean
+  :set 'multishell:do-assert-command-key
+  :group 'multishell)
+
+(defcustom multishell:pop-to-frame nil
   "*If non-nil, jump to a frame already showing the shell, if any.
 
 Otherwise, open a new window in the current frame."
   :type 'boolean
-  :group 'comint)
+  :group 'shell)
+
+(defcustom pop-to-shell-persist-shell-names nil
+  "Remember shell name/path associations across sessions. Note well:
+This will activate minibuffer history persistence, in general, if it's not
+already active."
+  :type 'boolean
+  :group 'shell)
+
+(defvar multishell:name-path-assoc nil
+  "Assoc list from name to path")
 
 (defvar pop-to-shell-primary-name "*shell*"
   "Shell name to use for un-modified pop-to-shell buffer target.")
@@ -182,7 +237,7 @@ customize the `savehist' group, and:
       (pop-to-buffer target-shell-buffer-name pop-up-windows))
 
        ;; Buffer exists and already has a window - jump to it:
-     (t (if (and pop-to-shell-frame
+     (t (if (and multishell:pop-to-frame
                  inwin
                  (not (equal (window-frame (selected-window))
                              (window-frame inwin))))
