@@ -16,20 +16,17 @@
 ;; TODO:
 ;; * Preservable (savehist) history that associates names with paths
 ;;   - Using an association list between names and paths
-;;   - Populates 
+;;   - Searched for search backwards/forwards on isearch-like M-r/M-s bindings
+;;     - *Not* searched for regular completion
+;;   - Editible
+;;     - Using isearch keybinding M-e
+;;     - Edits path
+;;     - New association overrides previous
+;;     - Deleting path removes association and history entry
 ;; * Customize provision for activating the saves
 ;;   - Customize entry has warning about activating savehist
 ;;   - Adds the name/path association list to savehist-additional-variables
 ;;   - Activates savehist, if inactive
-;; * Provide a basic means to remove and change entries
-;;   - Meta-e in prompting context goes to edit-current-entry mode
-;;   - Edit name: xyz <CR> path: /ssh:...
-;;   - CR in the editing phase calls the right action
-;;   - Changes to the entry are preserved in the association for that entry
-;;   - Deletion of either name or path removes the entire entry
-;; * Change name to multishell.
-;;   - Prefix will be multish
-;;   - Most functions will be prefixed, eg multish:pop-to-shell
 ;; * Customize provision for keybinding
 ;;   - See allout.el allout-command-prefix for dynamic customization example.
 
