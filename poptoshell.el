@@ -13,7 +13,10 @@
 ;; I bind to M-<space>, via eg: (global-set-key "\M- " 'pop-to-shell)
 ;; See the pop-to-shell docstring for details.
 ;;
-;; klm, 02/09/1999.
+;; TODO
+;; * Change name to multishell.
+;;   - Most functions will be prefixed, eg multishell:pop-to-shell
+;; * Provide for saved history
 
 (defvar non-interactive-process-buffers '("*compilation*" "*grep*"))
 
