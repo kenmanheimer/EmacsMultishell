@@ -14,6 +14,8 @@
 ;; I bind to M-<space>, via eg: (global-set-key "\M- " 'pop-to-shell)
 ;;
 ;; TODO:
+;; * Change name to multishell.
+;;   - Most functions will be prefixed, eg multishell:pop-to-shell
 ;; * Preservable (savehist) history that associates names with paths
 ;;   - Using an association list between names and paths
 ;;   - Searched for search backwards/forwards on isearch-like M-r/M-s bindings
@@ -29,6 +31,8 @@
 ;;   - Activates savehist, if inactive
 ;; * Customize provision for keybinding
 ;;   - See allout.el allout-command-prefix for dynamic customization example.
+
+(defvar non-interactive-process-buffers '("*compilation*" "*grep*"))
 
 (require 'comint)
 (require 'shell)
@@ -95,7 +99,7 @@ already active."
 
 (defvar pop-to-shell-primary-name "*shell*"
   "Shell name to use for un-modified pop-to-shell buffer target.")
-(defvar pop-to-shell-buffer-name-history nil
+(defvar multishell:buffer-name-history nil
   "Distinct pop-to-shell completion history container.")
 
 (defun pop-to-shell (&optional arg)
@@ -103,8 +107,9 @@ already active."
   "Navigate to or within local and remote shell buffers.
 
 Use universal arguments to launch and choose between alternate
-shell buffers, select which is default.  With Emacs tramp syntax,
-launch or return to a remote shell.
+shell buffers and to select which is default.  Prepend a path to
+a new shell name to launch a shell in that directory, and use
+Emacs tramp syntax to launch a remote shell.
 
 ==== Basic operation:
 
@@ -178,7 +183,7 @@ customize the `savehist' group, and:
   (let* ((from-buffer (current-buffer))
          (doublearg (equal arg '(16)))
          (temp (if arg
-                   (read-bare-shell-buffer-name
+                   (multishell:read-bare-shell-buffer-name
                     (format "Shell buffer name [%s]%s "
                             (substring-no-properties
                              pop-to-shell-primary-name
@@ -283,45 +288,32 @@ customize the `savehist' group, and:
      nil 'visible)
     nil))
 
-(defun read-bare-shell-buffer-name (prompt default)
+(defun multishell:read-bare-shell-buffer-name (prompt default)
   "PROMPT for shell buffer name, sans asterisks.
 
 Return the supplied name bracketed with the asterisks, or specified DEFAULT
 on empty input."
-  (let ((got
-         (completing-read
-          prompt
-          ;; COLLECTION:
-          (pop-to-shell-buffer-name-candidates)
-          ;; PREDICATE:
-          nil
-          ;; REQUIRE-MATCH:
-          'confirm
-          ;; INITIAL-INPUT:
-          nil
-          ;; HIST:
-          'pop-to-shell-buffer-name-history
-          )))
+  (let* ((candidates (append
+                      (remq nil
+                            (mapcar (lambda (buffer)
+                                      (let ((name (buffer-name buffer)))
+                                        (if (with-current-buffer buffer
+                                              (eq major-mode 'shell-mode))
+                                            ;; Shell mode buffers.
+                                            (if (> (length name) 2)
+                                                ;; Strip asterisks.
+                                                (substring name 1
+                                                           (1- (length name)))
+                                              name))))
+                                    (buffer-list)))))
+         (got (completing-read prompt
+                               candidates ; COLLECTION
+                               nil        ; PREDICATE
+                               'confirm   ; REQUIRE-MATCH
+                               nil        ; INITIAL-INPUT
+                               'multishell:buffer-name-history ; HIST
+                               )))
     (if (not (string= got "")) (bracket-asterisks got) default)))
-
-(defun pop-to-shell-buffer-name-candidates ()
-  "Return a list of the shell buffer name candidates.
-
-The list consists of the combination of existing shell buffer
-names plus the names in the history (which can include
-non-existent buffers, from saved history)."
- (append (remq nil
-               (mapcar (lambda (buffer)
-                         (let ((name (buffer-name buffer)))
-                           (if (with-current-buffer buffer
-                                 (eq major-mode 'shell-mode))
-                               (if (> (length name) 2)
-                                   (substring name 1 (1- (length
-                                                          name)))
-                                 name))))
-                       (buffer-list)))
-         pop-to-shell-buffer-name-history)
-)
 
 (defun bracket-asterisks (name)
   "Return a copy of name, ensuring it has an asterisk at the beginning and end."
