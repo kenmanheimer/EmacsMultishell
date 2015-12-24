@@ -275,6 +275,12 @@ on empty input."
                                         (symbol-value xargs-name)
                                       '("-i")))))
     (set-buffer buffer-name)
-    (shell-mode)))
+    (shell-mode)
+    (when (and (file-remote-p default-directory)
+             (not (comint-check-proc (current-buffer))))
+      (message "(Re)connection failed, doing a cleanup then retry...")
+      (sit-for 0)
+      (tramp-cleanup-this-connection)
+      (shell-mode))))
 
 (provide 'poptoshell)
