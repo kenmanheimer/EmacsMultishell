@@ -75,7 +75,7 @@ Use keybinding identified by `multishell:command-key'."
   (multishell:assert-command-key-or-not (not option-value))
   )
 (defcustom multishell:assert-command-key nil
-  "Set this to impose the `multishell-command-key binding."
+  "Set this to impose the `multishell-command-key' binding."
   :type 'boolean
   :set 'multishell:do-assert-command-key
   :group 'multishell)
@@ -124,7 +124,7 @@ Emacs tramp syntax to launch a remote shell.
  - If not in a shell buffer (or with universal argument), go to a
    window that is already showing the (a) shell buffer, if any.
 
-   We use `pop-up-windows`, so you can adjust/customize that
+   We use `pop-up-windows', so you can adjust/customize that
    to control the other-buffer/same-buffer behavior.
 
    In this case, the cursor is left in its prior position in the
