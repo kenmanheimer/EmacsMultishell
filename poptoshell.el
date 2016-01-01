@@ -256,7 +256,10 @@ on empty input."
       (setq name (substring name 0 -1)))
   name)
 (defun start-shell-in-buffer (buffer-name)
-  ;; Damn comint requires buffer name be bracketed by "*" asterisks.
+  "Ensure a shell is started, using whatever name we're passed."
+  ;; We work around shell-mode's bracketing of the buffer name, and do
+  ;; some tramp-mode hygiene for remote connections.
+
   (require 'comint)
   (require 'shell)
 
