@@ -342,6 +342,15 @@ on empty input."
          (name (file-name-nondirectory prog))
          (startfile (concat "~/.emacs_" name))
          (xargs-name (intern-soft (concat "explicit-" name "-args"))))
+    (set-buffer buffer-name)
+    (when (and (file-remote-p default-directory)
+               (eq major-mode 'shell-mode)
+               (not (comint-check-proc (current-buffer))))
+      ;; We're returning to an already established but disconnected remote
+      ;; shell, tidy it:
+      (tramp-cleanup-connection
+       (tramp-dissect-file-name default-directory 'noexpand)
+       'keep-debug 'keep-password))
     (setq buffer (set-buffer (apply 'make-comint
                                     (unbracket-asterisks buffer-name)
                                     prog
@@ -351,13 +360,6 @@ on empty input."
                                              (boundp xargs-name))
                                         (symbol-value xargs-name)
                                       '("-i")))))
-    (set-buffer buffer-name)
-    (shell-mode)
-    (when (and (file-remote-p default-directory)
-             (not (comint-check-proc (current-buffer))))
-      (message "(Re)connection failed, doing a cleanup then retry...")
-      (sleep-for 0)
-      (tramp-cleanup-this-connection)
-      (shell-mode))))
+    (shell-mode)))
 
 (provide 'poptoshell)
