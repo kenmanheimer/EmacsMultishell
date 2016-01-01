@@ -57,9 +57,12 @@ Emacs tramp syntax to launch a remote shell.
  - If not in a shell buffer (or with universal argument), go to a
    window that is already showing the (a) shell buffer, if any.
 
+   We use `pop-up-windows', so you can adjust/customize that
+   to control the other-buffer/same-buffer behavior.
+
    In this case, the cursor is left in its prior position in the
-   shell buffer. (Repeating the command will then go to the
-   process input point, by the previous behavior.)
+   shell buffer. Repeating the command will then go to the
+   process input point, per the first item in this list.
 
  - Otherwise, start a new shell buffer, using the current
    directory as the working directory..
