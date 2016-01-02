@@ -10,11 +10,11 @@
 ;;
 ;;; Commentary:
 ;;
-;; Easily get to a default shell buffer, or to the input point for the
+;; Get to a shell buffer with a keystroke, or to the input point for the
 ;; current shell buffer.  Use universal arguments to launch and choose
 ;; between alternate shell buffers and to select which is default.  Prepend
 ;; a path to a new shell name to launch a shell in that directory, and use
-;; Emacs tramp syntax to launch a remote shell.
+;; Emacs tramp path syntax to launch a remote shell.
 ;;
 ;; See the pop-to-shell docstring for details.
 ;;
@@ -30,7 +30,7 @@
 ;;     - Edits path
 ;;     - New association overrides previous
 ;;     - Deleting path removes association and history entry
-;; * Customize provision for activating the saves
+;; * Customize activation of savehist
 ;;   - Customize entry has warning about activating savehist
 ;;   - Adds the name/path association list to savehist-additional-variables
 ;;   - Activates savehist, if inactive
@@ -54,9 +54,10 @@ Add names of buffers that you don't want pop-to-shell to stick around in."
   :type '(repeat string)
   :group 'multishell)
 (defcustom multishell:command-key "\M- "
-  "The key for pop-to-shell, if `multishell:activate-command-key' is set.
+  "The key to use if `multishell:activate-command-key' is true.
 
-You can instead bind your key of choice using emacs lisp `global-set-key'."
+You can instead bind `pop-to-shell` to your preferred key using emacs
+lisp, eg: (global-set-key \"\\M- \" 'pop-to-shell)."
   :type 'key-sequence
   :group 'multishell)
 
@@ -87,22 +88,24 @@ If optional UNBIND is true, globally unbind the key.
 (defcustom multishell:activate-command-key nil
   "Set this to impose the `multishell:command-key' binding.
 
-You can instead bind your key of choice using emacs lisp `global-set-key'."
+You can instead bind `pop-to-shell` to your preferred key using emacs
+lisp, eg: (global-set-key \"\\M- \" 'pop-to-shell)."
   :type 'boolean
   :set 'multishell:activate-command-key-setter
   :group 'multishell)
 
+;; Assert the customizations whenever the package is loaded:
 (with-eval-after-load "poptoshell"
   (multishell:implement-command-key-choice))
 
 (defcustom multishell:pop-to-frame nil
-  "*If non-nil, jump to a frame already showing the shell, if any.
+  "*If non-nil, jump to a frame already showing the shell, if another is.
 
 Otherwise, open a new window in the current frame.
 
 \(Adjust `pop-up-windows' to change other-buffer vs current-buffer behavior.)"
   :type 'boolean
-  :group 'shell)
+  :group 'multishell)
 
 ;; (defcustom multishell:persist-shell-names nil
 ;;   "Remember shell name/path associations across sessions. Note well:
@@ -177,14 +180,16 @@ single or doubled universal arguments:
 
 The shell buffer name you give to the prompt for a universal arg
 can include a preceding path. That will be used for the startup
-directory - and can include tramp remote syntax to specify a
-remote shell. If there is an element after a final '/', that's used for the buffer name. Otherwise, the host, domain, or path is used.
+directory. You can use tramp remote syntax to specify a remote
+shell. If there is an element after a final '/', that's used for
+the buffer name. Otherwise, the host, domain, or path is used.
 
-For example: '/ssh:example.net:/' or
-'/ssh:example.net|sudo:root@example.net:/\#example', etc.  The
-stuff between the '/' slashes will be used for starting the
-remote shell, and the stuff after the last slash will be used
-for the shell name."
+For example:
+
+* Use '/ssh:example.net:/' for a shell buffer on example.net named
+  \"example.net\".
+* '/ssh:example.net|sudo:root@example.net:/\#ex' for a root shell on 
+  example.net named \"#ex\"."
 
 ;; I'm leaving the following out of the docstring for now because just
 ;; saving the buffer names, and not the paths, yields sometimes unwanted
@@ -201,9 +206,6 @@ for the shell name."
 ;; 3. Save.
 
   (interactive "P")
-
-  (if (not (boundp 'shell-buffer-name))
-      (setq shell-buffer-name "*shell*"))
 
   (let* ((from-buffer (current-buffer))
          (from-buffer-is-shell (eq major-mode 'shell-mode))
@@ -290,14 +292,11 @@ for the shell name."
     (let ((process (get-buffer-process (current-buffer))))
       (if (and process (equal 'stop (process-status process)))
           (continue-process process)))
-    (if (and (not already-there)
-             (not (equal (current-buffer) from-buffer)))
-        t
+    (when (or already-there
+             (equal (current-buffer) from-buffer))
       (goto-char (point-max))
       (and (get-buffer-process from-buffer)
-           (goto-char (process-mark (get-buffer-process from-buffer)))))
-    )
-)
+           (goto-char (process-mark (get-buffer-process from-buffer)))))))
 
 (defun get-visible-window-for-buffer (buffer)
   "Return visible window containing buffer."
