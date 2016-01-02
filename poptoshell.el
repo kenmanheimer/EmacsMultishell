@@ -31,6 +31,15 @@
 ;;   - Activates savehist, if inactive
 ;; * Customize provision for keybinding
 ;;   - See allout.el allout-command-prefix for dynamic customization example.
+;;   - Elements:
+;;     - Key Binding: multishell:command-key
+;;     - Activation choice: multishell:activate-command-key
+;;     - Enforce choice: multishell:implement-command-key-choice
+;;       - Called when multishell:activate-command-key is changed
+;;       - Called by after-load function
+;;     - After-load function:
+;;       - Use (with-eval-after-load "poptoshell"
+;;                                   (multishell:implement-command-key-choice))
 
 (defvar non-interactive-process-buffers '("*compilation*" "*grep*"))
 
@@ -46,39 +55,51 @@ with allout-mode."
 
 (defcustom multishell:non-interactive-process-buffers
   '("*compilation*" "*grep*")
-  "Buffers with processes but not for interaction."
+  "Names of buffers that have processes but are not for interaction.
+Add names of buffers that you don't want pop-to-shell to stick around in."
   :type '(repeat string)
   :group 'multishell)
 (defcustom multishell:command-key "\M- "
-  "Choose a key to use for "
-  :type 'string
+  "The key for pop-to-shell, if `multishell:activate-command-key' is set.
+
+You can instead bind your key of choice using emacs lisp `global-set-key'."
+  :type 'key-sequence
   :group 'multishell)
-(defun multishell:assert-command-key-or-not (&optional force)
-  "Activate multishell command key if customizations dictate.
 
-If optional FORCE is true and customizations dictate, globally
-unbind the key.
+(defvar multishell:responsible-for-command-key nil
+  "Multishell internal.")
+(defun multishell:activate-command-key-setter (symbol setting)
+  "Implement `multishell:activate-command-key' choice."
+  (set-default 'multishell:activate-command-key setting)
+  (when (or setting multishell:responsible-for-command-key)
+    (multishell:implement-command-key-choice (not setting))))
+(defun multishell:implement-command-key-choice (&optional unbind)
+  "If settings dicate, implement binding of multishell command key.
 
-* `multishell:assert-command-key' - Establish or keep the binding if true
-* `multishell:command-key' - Which key to use."
-  (if (boundp 'multishell:assert-command-key)
-      (cond ((and multishell:assert-command-key multishell:command-key)
-             (global-set-key multishell:command-key 'pop-to-shell))
-            ((and force (not multishell:assert-command-key))
-             (global-unset-key multishell:command-key)))
-    )
-  )
-(defun multishell:do-assert-command-key (option-name option-value)
-  "If `multishell:assert-command-key', globally bind pop-to-shell.
+If optional UNBIND is true, globally unbind the key.
 
-Use keybinding identified by `multishell:command-key'."
-  (multishell:assert-command-key-or-not (not option-value))
-  )
-(defcustom multishell:assert-command-key nil
-  "Set this to impose the `multishell-command-key' binding."
+* `multishell:activate-command-key' - Set this to get the binding or not.
+* `multishell:command-key' - The key to use for the binding, if appropriate."
+  (cond (unbind
+         (when (and (boundp 'multishell:command-key) multishell:command-key)
+           (global-unset-key multishell:command-key)))
+        ((not (and (boundp 'multishell:activate-command-key)
+                   (boundp 'multishell:command-key)))
+         nil)
+        ((and multishell:activate-command-key multishell:command-key)
+         (setq multishell:responsible-for-command-key t)
+         (global-set-key multishell:command-key 'pop-to-shell))))
+
+(defcustom multishell:activate-command-key nil
+  "Set this to impose the `multishell:command-key' binding.
+
+You can instead bind your key of choice using emacs lisp `global-set-key'."
   :type 'boolean
-  :set 'multishell:do-assert-command-key
+  :set 'multishell:activate-command-key-setter
   :group 'multishell)
+
+(with-eval-after-load "poptoshell"
+  (multishell:implement-command-key-choice))
 
 (defcustom multishell:pop-to-frame nil
   "*If non-nil, jump to a frame already showing the shell, if any.
