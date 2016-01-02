@@ -206,6 +206,7 @@ for the shell name."
       (setq shell-buffer-name "*shell*"))
 
   (let* ((from-buffer (current-buffer))
+         (from-buffer-is-shell (eq major-mode 'shell-mode))
          (doublearg (equal arg '(16)))
          (temp (if arg
                    (multishell:read-bare-shell-buffer-name
@@ -216,7 +217,6 @@ for the shell name."
                             (if doublearg " <==" ":"))
                     multishell:primary-name)
                  multishell:primary-name))
-         ;; Make sure it is bracketed with asterisks; silly.
          use-default-dir
          (target-shell-buffer-name
           ;; Derive target name, and default-dir if any, from temp.
@@ -234,11 +234,11 @@ for the shell name."
                     (match-string 2 temp))))
                 (t (bracket-asterisks temp))))
          (curr-buff-proc (get-buffer-process from-buffer))
-         (target-buffer (if (and curr-buff-proc
-                        (not (member (buffer-name from-buffer)
-                                     non-interactive-process-buffers)))
-                   from-buffer
-                 (get-buffer target-shell-buffer-name)))
+         (target-buffer (if (and (or curr-buff-proc from-buffer-is-shell)
+                                 (not (member (buffer-name from-buffer)
+                                              non-interactive-process-buffers)))
+                            from-buffer
+                          (get-buffer target-shell-buffer-name)))
          inwin
          already-there)
 
@@ -249,7 +249,7 @@ for the shell name."
 
     (cond 
 
-     ((and curr-buff-proc
+     ((and (or curr-buff-proc from-buffer-is-shell)
            (not arg)
            (eq from-buffer target-buffer)
            (not (eq target-shell-buffer-name (buffer-name from-buffer))))
