@@ -1,6 +1,6 @@
-;;; poptoshell.el --- manage interaction with multiple local and remote shells
+;;; multishell.el --- manage interaction with multiple local and remote shells
 
-;; Copyright (C) 1999-2011 Free Software Foundation, Inc. and Ken Manheimer
+;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken dot manheimer at gmail...>
 ;; Maintainer: Ken Manheimer <ken dot manheimer at gmail...>
@@ -14,7 +14,8 @@
 ;; current shell buffer.  Use universal arguments to launch and choose
 ;; between alternate shell buffers and to select which is default.  Prepend
 ;; a path to a new shell name to launch a shell in that directory, and use
-;; Emacs tramp path syntax to launch a remote shell.
+;; Emacs tramp path syntax to launch a remote shell. Fluidly articulate
+;; emacs shell power.
 ;;
 ;; See the pop-to-shell docstring for details.
 ;;
@@ -95,7 +96,7 @@ lisp, eg: (global-set-key \"\\M- \" 'pop-to-shell)."
   :group 'multishell)
 
 ;; Assert the customizations whenever the package is loaded:
-(with-eval-after-load "poptoshell"
+(with-eval-after-load "multishell"
   (multishell:implement-command-key-choice))
 
 (defcustom multishell:pop-to-frame nil
@@ -201,7 +202,8 @@ For example:
 ;; shell buffer names and paths across emacs sessions. To do so,
 ;; customize the `savehist' group, and:
 
-;; 1. Add `pop-to-shell-buffer-name-history' to Savehist Additional Variables.
+;; 1. Add `multishell:pop-to-shell-buffer-name-history' to Savehist Additional
+;;    Variables.
 ;; 2. Activate Savehist Mode, if not already activated.
 ;; 3. Save.
 
@@ -225,7 +227,7 @@ For example:
           (cond ((string= temp "") multishell:primary-name)
                 ((string-match "^\\*\\(/.*/\\)\\(.*\\)\\*" temp)
                  (setq use-default-dir (match-string 1 temp))
-                 (bracket-asterisks 
+                 (multishell:bracket-asterisks 
                   (if (string= (match-string 2 temp) "")
                       (let ((v (tramp-dissect-file-name
                                 use-default-dir)))
@@ -234,7 +236,7 @@ For example:
                             (tramp-file-name-localname v)
                             use-default-dir))
                     (match-string 2 temp))))
-                (t (bracket-asterisks temp))))
+                (t (multishell:bracket-asterisks temp))))
          (curr-buff-proc (get-buffer-process from-buffer))
          (target-buffer (if (and (or curr-buff-proc from-buffer-is-shell)
                                  (not (member (buffer-name from-buffer)
@@ -263,7 +265,8 @@ For example:
       (setq already-there t))
 
      ((or (not target-buffer)
-          (not (setq inwin (get-visible-window-for-buffer target-buffer))))
+          (not (setq inwin
+                     (multishell:get-visible-window-for-buffer target-buffer))))
       ;; No preexisting shell buffer, or not in a visible window:
       (pop-to-buffer target-shell-buffer-name pop-up-windows))
 
@@ -298,7 +301,7 @@ For example:
       (and (get-buffer-process from-buffer)
            (goto-char (process-mark (get-buffer-process from-buffer)))))))
 
-(defun get-visible-window-for-buffer (buffer)
+(defun multishell:get-visible-window-for-buffer (buffer)
   "Return visible window containing buffer."
   (catch 'got-a-vis
     (walk-windows
@@ -337,16 +340,16 @@ on empty input."
                                nil        ; INITIAL-INPUT
                                'multishell:buffer-name-history ; HIST
                                )))
-    (if (not (string= got "")) (bracket-asterisks got) default)))
+    (if (not (string= got "")) (multishell:bracket-asterisks got) default)))
 
-(defun bracket-asterisks (name)
+(defun multishell:bracket-asterisks (name)
   "Return a copy of name, ensuring it has an asterisk at the beginning and end."
   (if (not (string= (substring name 0 1) "*"))
       (setq name (concat "*" name)))
   (if (not (string= (substring name -1) "*"))
       (setq name (concat name "*")))
   name)
-(defun unbracket-asterisks (name)
+(defun multishell:unbracket-asterisks (name)
   "Return a copy of name, removing asterisks, if any, at beginning and end."
   (if (string= (substring name 0 1) "*")
       (setq name (substring name 1)))
@@ -379,7 +382,7 @@ on empty input."
        (tramp-dissect-file-name default-directory 'noexpand)
        'keep-debug 'keep-password))
     (setq buffer (set-buffer (apply 'make-comint
-                                    (unbracket-asterisks buffer-name)
+                                    (multishell:unbracket-asterisks buffer-name)
                                     prog
                                     (if (file-exists-p startfile)
                                         startfile)
@@ -389,4 +392,4 @@ on empty input."
                                       '("-i")))))
     (shell-mode)))
 
-(provide 'poptoshell)
+(provide 'multishell)

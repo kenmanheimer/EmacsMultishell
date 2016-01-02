@@ -5,29 +5,19 @@ Handy Emacs utilities
 
 I've been using Gnu Emacs since it was publicly available (1985?), and have contributed some packages which are included with Emacs, notably the [Allout outliner](http://myriadicity.net/software-and-systems/craft/emacs-allout), [icomplete mode](http://www.emacswiki.org/emacs/IcompleteMode), and python-mode's [pdbtrack functionality](http://myriadicity.net/software-and-systems/craft/crafty-hacks#section-1). Like many long-time Emacs users, I've use some custom code, some of which I wouldn't do without. Here's a few items that I particularly like, and think might be useful to others - I hope to include more, as time allows.
 
-* **[poptoshell.el](./poptoshell.el)**
+* **[multishell.el](./multishell.el)**
 
-  I use the emacs shell a lot. I bind this to Meta-space to make it easy to:
+  I use the emacs shell a *lot*. I bind this to Meta-space to make it easy to:
 
-    * Return to the current primary shell, in an alternate window
-    * When within a shell buffer, get to the input prompt
-    * Start alternate shells, and easily choose between any that are going:
-      * With one universal argument, prompt for the name of the shell
-      * with completion on existing names,
-      * and new names to start a new shells.
-    * Prefix names of new shells with paths, to specify starting directory
-    * For a remote shell, use tramp-style remote path!
-      * Without an explicit name following the last slash, the host name is
-        used as the shell name. But the trailing name makes it easy to
-        distinguish, eg, root shells: `/ssh:myserver.net|sudo:root@myserver.net:/#myserver`
-      * Since the shell's current directory is used by default:
-        * If the remote shell has been disconnected, it's reconnected by default, in the same directory where you left off
-          * (So I exit remote shells I'm done with, but keep the buffers around - I just resume by Meta-space <shell-name>.)
-        * Visiting files from a remote shell buffer visits relative to the remote host!
-    * Change which shell is the session default by using a doubled
-      universal argument.
-      * Handy for a kind of current-project modality, easily changing
-        which shell is the default as you change project focus.
+  * Get to a shell buffer with a keystroke,
+  * ... or to the input point for the current shell buffer.
+  * Use universal arguments to launch and choose between alternate shell
+    buffers and to select which is default.
+  * Prepend a path to a new shell name to launch a shell in that directory,
+  * and use Emacs tramp path syntax to launch a remote shell.
+
+  On top of shell and tramp, this turns emacs into a versatile systems
+  management tool.
 
 * **[xsel.el](./xsel.el)**
 
