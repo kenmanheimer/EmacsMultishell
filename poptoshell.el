@@ -1,4 +1,4 @@
-;;; poptoshell.el --- easily manage interaction with multiple shells
+;;; poptoshell.el --- manage interaction with multiple local and remote shells
 
 ;; Copyright (C) 1999-2011 Free Software Foundation, Inc. and Ken Manheimer
 
@@ -10,8 +10,13 @@
 ;;
 ;;; Commentary:
 ;;
+;; Easily get to a default shell buffer, or to the input point for the
+;; current shell buffer.  Use universal arguments to launch and choose
+;; between alternate shell buffers and to select which is default.  Prepend
+;; a path to a new shell name to launch a shell in that directory, and use
+;; Emacs tramp syntax to launch a remote shell.
+;;
 ;; See the pop-to-shell docstring for details.
-;; I bind to M-<space>, via eg: (global-set-key "\M- " 'pop-to-shell)
 ;;
 ;; TODO:
 ;; * Change name to multishell.
@@ -93,33 +98,36 @@ You can instead bind your key of choice using emacs lisp `global-set-key'."
 (defcustom multishell:pop-to-frame nil
   "*If non-nil, jump to a frame already showing the shell, if any.
 
-Otherwise, open a new window in the current frame."
+Otherwise, open a new window in the current frame.
+
+\(Adjust `pop-up-windows' to change other-buffer vs current-buffer behavior.)"
   :type 'boolean
   :group 'shell)
 
-(defcustom pop-to-shell-persist-shell-names nil
-  "Remember shell name/path associations across sessions. Note well:
-This will activate minibuffer history persistence, in general, if it's not
-already active."
-  :type 'boolean
-  :group 'shell)
+;; (defcustom multishell:persist-shell-names nil
+;;   "Remember shell name/path associations across sessions. Note well:
+;; This will activate minibuffer history persistence, in general, if it's not
+;; already active."
+;;   :type 'boolean
+;;  :group 'shell)
 
 (defvar multishell:name-path-assoc nil
   "Assoc list from name to path")
 
-(defvar pop-to-shell-primary-name "*shell*"
+(defvar multishell:primary-name "*shell*"
   "Shell name to use for un-modified pop-to-shell buffer target.")
 (defvar multishell:buffer-name-history nil
   "Distinct pop-to-shell completion history container.")
 
 (defun pop-to-shell (&optional arg)
-
-  "Navigate to or within local and remote shell buffers.
+  "Easily navigate to and within multiple shell buffers, local and remote.
 
 Use universal arguments to launch and choose between alternate
 shell buffers and to select which is default.  Prepend a path to
 a new shell name to launch a shell in that directory, and use
 Emacs tramp syntax to launch a remote shell.
+
+Customize-group `multishell' to set up a key binding and tweak behaviors.
 
 ==== Basic operation:
 
@@ -134,18 +142,18 @@ Emacs tramp syntax to launch a remote shell.
  - If not in a shell buffer (or with universal argument), go to a
    window that is already showing the (a) shell buffer, if any.
 
-   We use `pop-up-windows', so you can adjust/customize it
-   to set the other-buffer/same-buffer behavior.
-
    In this case, the cursor is left in its prior position in the
    shell buffer. Repeating the command will then go to the
    process input point, per the first item in this list.
 
- - Otherwise, start a new shell buffer, using the current
-   directory as the working directory..
+   We respect `pop-up-windows', so you can adjust it to set the
+   other-buffer/same-buffer behavior.
 
-If the resulting buffer exists and its shell process was
-disconnected or otherwise stopped, it's resumed.
+ - Otherwise, start a new shell buffer, using the current
+   directory as the working directory.
+
+If a buffer with the resulting name exists and its shell process
+was disconnected or otherwise stopped, it's resumed.
 
 ===== Universal arg to start and select between named shell buffers:
 
@@ -172,21 +180,25 @@ can include a preceding path. That will be used for the startup
 directory - and can include tramp remote syntax to specify a
 remote shell. If there is an element after a final '/', that's used for the buffer name. Otherwise, the host, domain, or path is used.
 
-For example: '/ssh:myriadicity.net:/' or
-'/ssh:myriadicity.net|sudo:root@myriadicity.net:/\#myr', etc.
-The stuff between the '/' slashes will be used for
-starting the remote shell, and the stuff after the second
-slash will be used for the shell name.
+For example: '/ssh:example.net:/' or
+'/ssh:example.net|sudo:root@example.net:/\#example', etc.  The
+stuff between the '/' slashes will be used for starting the
+remote shell, and the stuff after the last slash will be used
+for the shell name."
 
-===== Persisting your alternate shell buffer names and paths:
+;; I'm leaving the following out of the docstring for now because just
+;; saving the buffer names, and not the paths, yields sometimes unwanted
+;; behavior.
 
-You can use emacs builtin SaveHist to preserve your alternate
-shell buffer names and paths across emacs sessions. To do so,
-customize the `savehist' group, and:
+;; ===== Persisting your alternate shell buffer names and paths:
 
-1. Add `pop-to-shell-buffer-name-history' to Savehist Additional Variables.
-2. Activate Savehist Mode, if not already activated.
-3. Save."
+;; You can use emacs builtin SaveHist to preserve your alternate
+;; shell buffer names and paths across emacs sessions. To do so,
+;; customize the `savehist' group, and:
+
+;; 1. Add `pop-to-shell-buffer-name-history' to Savehist Additional Variables.
+;; 2. Activate Savehist Mode, if not already activated.
+;; 3. Save.
 
   (interactive "P")
 
@@ -199,16 +211,16 @@ customize the `savehist' group, and:
                    (multishell:read-bare-shell-buffer-name
                     (format "Shell buffer name [%s]%s "
                             (substring-no-properties
-                             pop-to-shell-primary-name
-                             1 (- (length pop-to-shell-primary-name) 1))
+                             multishell:primary-name
+                             1 (- (length multishell:primary-name) 1))
                             (if doublearg " <==" ":"))
-                    pop-to-shell-primary-name)
-                 pop-to-shell-primary-name))
+                    multishell:primary-name)
+                 multishell:primary-name))
          ;; Make sure it is bracketed with asterisks; silly.
          use-default-dir
          (target-shell-buffer-name
           ;; Derive target name, and default-dir if any, from temp.
-          (cond ((string= temp "") pop-to-shell-primary-name)
+          (cond ((string= temp "") multishell:primary-name)
                 ((string-match "^\\*\\(/.*/\\)\\(.*\\)\\*" temp)
                  (setq use-default-dir (match-string 1 temp))
                  (bracket-asterisks 
@@ -231,7 +243,7 @@ customize the `savehist' group, and:
          already-there)
 
     (when doublearg
-      (setq pop-to-shell-primary-name target-shell-buffer-name))
+      (setq multishell:primary-name target-shell-buffer-name))
 
     ;; Situate:
 
@@ -249,7 +261,7 @@ customize the `savehist' group, and:
       (setq already-there t))
 
      ((or (not target-buffer)
-          (not (setq inwin (get-visible-win-for-buffer target-buffer))))
+          (not (setq inwin (get-visible-window-for-buffer target-buffer))))
       ;; No preexisting shell buffer, or not in a visible window:
       (pop-to-buffer target-shell-buffer-name pop-up-windows))
 
@@ -272,7 +284,7 @@ customize the `savehist' group, and:
     ;; Activate:
 
     (if (not (comint-check-proc (current-buffer)))
-        (start-shell-in-buffer (buffer-name (current-buffer))))
+        (multishell:start-shell-in-buffer (buffer-name (current-buffer))))
 
     ;; If the destination buffer has a stopped process, resume it:
     (let ((process (get-buffer-process (current-buffer))))
@@ -287,7 +299,7 @@ customize the `savehist' group, and:
     )
 )
 
-(defun get-visible-win-for-buffer (buffer)
+(defun get-visible-window-for-buffer (buffer)
   "Return visible window containing buffer."
   (catch 'got-a-vis
     (walk-windows
@@ -342,7 +354,7 @@ on empty input."
   (if (string= (substring name -1) "*")
       (setq name (substring name 0 -1)))
   name)
-(defun start-shell-in-buffer (buffer-name)
+(defun multishell:start-shell-in-buffer (buffer-name)
   "Ensure a shell is started, using whatever name we're passed."
   ;; We work around shell-mode's bracketing of the buffer name, and do
   ;; some tramp-mode hygiene for remote connections.
