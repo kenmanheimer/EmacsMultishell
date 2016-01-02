@@ -3,26 +3,37 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken dot manheimer at gmail...>
+;; Version: 1.0
 ;; Maintainer: Ken Manheimer <ken dot manheimer at gmail...>
-;; Created: 1999 -- first public release
+;; Created: 1999 -- first public availability
 ;; Keywords: processes
-;; Website: https://github.com/kenmanheimer/EmacsUtils
+;; URL: https://github.com/kenmanheimer/EmacsUtils
 ;;
 ;;; Commentary:
 ;;
-;; Get to a shell buffer with a keystroke, or to the input point for the
-;; current shell buffer.  Use universal arguments to launch and choose
-;; between alternate shell buffers and to select which is default.  Prepend
-;; a path to a new shell name to launch a shell in that directory, and use
-;; Emacs tramp path syntax to launch a remote shell. Fluidly articulate
-;; emacs shell power.
+;; Easily use and manage multiple shell buffers, including remote shells.
+;; Fundamentally, multishell is the function `multishell:pop-to-shell - like
+;; pop-to-buffer - plus a keybinding. Together, they enable you to:
+;;
+;; * Get to the input point from wherever you are in a shell buffer,
+;; * ... or to a shell buffer if you're not currently in one.
+;; * Use universal arguments to launch and choose among alternate shell buffers,
+;; * ... and select which is default.
+;; * Prepend a path to a new shell name to launch a shell in that directory,
+;; * ... and use a path with Emacs tramp syntax to launch a remote shell.
+;;
+;; Customize-group `multishell` to select and activate a keybinding and set
+;; various behaviors.
 ;;
 ;; See the pop-to-shell docstring for details.
 ;;
-;; TODO:
-;; * Change name to multishell.
-;;   - Most functions will be prefixed, eg multishell:pop-to-shell
-;; * Preservable (savehist) history that associates names with paths
+;;; Change Log:
+;;
+;; 2016-01-02 Ken Manheimer - initial release
+;;
+;;; TODO:
+;;
+;; * Preserveable (savehist) history that associates names with paths
 ;;   - Using an association list between names and paths
 ;;   - Searched for search backwards/forwards on isearch-like M-r/M-s bindings
 ;;     - *Not* searched for regular completion
@@ -35,6 +46,8 @@
 ;;   - Customize entry has warning about activating savehist
 ;;   - Adds the name/path association list to savehist-additional-variables
 ;;   - Activates savehist, if inactive
+
+;;; Code:
 
 (defvar non-interactive-process-buffers '("*compilation*" "*grep*"))
 
@@ -393,3 +406,5 @@ on empty input."
     (shell-mode)))
 
 (provide 'multishell)
+
+;;; multishell.el ends here
