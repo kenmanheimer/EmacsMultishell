@@ -29,17 +29,6 @@
 ;;   - Customize entry has warning about activating savehist
 ;;   - Adds the name/path association list to savehist-additional-variables
 ;;   - Activates savehist, if inactive
-;; * Customize provision for keybinding
-;;   - See allout.el allout-command-prefix for dynamic customization example.
-;;   - Elements:
-;;     - Key Binding: multishell:command-key
-;;     - Activation choice: multishell:activate-command-key
-;;     - Enforce choice: multishell:implement-command-key-choice
-;;       - Called when multishell:activate-command-key is changed
-;;       - Called by after-load function
-;;     - After-load function:
-;;       - Use (with-eval-after-load "poptoshell"
-;;                                   (multishell:implement-command-key-choice))
 
 (defvar non-interactive-process-buffers '("*compilation*" "*grep*"))
 
