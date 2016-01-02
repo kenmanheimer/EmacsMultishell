@@ -1,4 +1,4 @@
-;;; poptoshell.el --- get to the process buffer and input mark
+;;; poptoshell.el --- manage interaction with multiple local and remote shells
 
 ;; Copyright (C) 1999-2011 Free Software Foundation, Inc. and Ken Manheimer
 
@@ -10,39 +10,127 @@
 ;;
 ;;; Commentary:
 ;;
-;; I bind to M-<space>, via eg: (global-set-key "\M- " 'pop-to-shell)
+;; Get to a shell buffer with a keystroke, or to the input point for the
+;; current shell buffer.  Use universal arguments to launch and choose
+;; between alternate shell buffers and to select which is default.  Prepend
+;; a path to a new shell name to launch a shell in that directory, and use
+;; Emacs tramp path syntax to launch a remote shell.
+;;
 ;; See the pop-to-shell docstring for details.
 ;;
-;; TODO
+;; TODO:
 ;; * Change name to multishell.
 ;;   - Most functions will be prefixed, eg multishell:pop-to-shell
-;; * Provide for saved history
+;; * Preservable (savehist) history that associates names with paths
+;;   - Using an association list between names and paths
+;;   - Searched for search backwards/forwards on isearch-like M-r/M-s bindings
+;;     - *Not* searched for regular completion
+;;   - Editible
+;;     - Using isearch keybinding M-e
+;;     - Edits path
+;;     - New association overrides previous
+;;     - Deleting path removes association and history entry
+;; * Customize activation of savehist
+;;   - Customize entry has warning about activating savehist
+;;   - Adds the name/path association list to savehist-additional-variables
+;;   - Activates savehist, if inactive
 
 (defvar non-interactive-process-buffers '("*compilation*" "*grep*"))
 
 (require 'comint)
 (require 'shell)
 
-(defcustom pop-to-shell-frame nil
-  "*If non-nil, jump to a frame already showing the shell, if any.
+(defgroup multishell nil
+  "Allout extension that highlights outline structure graphically.
 
-Otherwise, open a new window in the current frame."
+Customize `allout-widgets-auto-activation' to activate allout-widgets
+with allout-mode."
+  :group 'shell)
+
+(defcustom multishell:non-interactive-process-buffers
+  '("*compilation*" "*grep*")
+  "Names of buffers that have processes but are not for interaction.
+Add names of buffers that you don't want pop-to-shell to stick around in."
+  :type '(repeat string)
+  :group 'multishell)
+(defcustom multishell:command-key "\M- "
+  "The key to use if `multishell:activate-command-key' is true.
+
+You can instead bind `pop-to-shell` to your preferred key using emacs
+lisp, eg: (global-set-key \"\\M- \" 'pop-to-shell)."
+  :type 'key-sequence
+  :group 'multishell)
+
+(defvar multishell:responsible-for-command-key nil
+  "Multishell internal.")
+(defun multishell:activate-command-key-setter (symbol setting)
+  "Implement `multishell:activate-command-key' choice."
+  (set-default 'multishell:activate-command-key setting)
+  (when (or setting multishell:responsible-for-command-key)
+    (multishell:implement-command-key-choice (not setting))))
+(defun multishell:implement-command-key-choice (&optional unbind)
+  "If settings dicate, implement binding of multishell command key.
+
+If optional UNBIND is true, globally unbind the key.
+
+* `multishell:activate-command-key' - Set this to get the binding or not.
+* `multishell:command-key' - The key to use for the binding, if appropriate."
+  (cond (unbind
+         (when (and (boundp 'multishell:command-key) multishell:command-key)
+           (global-unset-key multishell:command-key)))
+        ((not (and (boundp 'multishell:activate-command-key)
+                   (boundp 'multishell:command-key)))
+         nil)
+        ((and multishell:activate-command-key multishell:command-key)
+         (setq multishell:responsible-for-command-key t)
+         (global-set-key multishell:command-key 'pop-to-shell))))
+
+(defcustom multishell:activate-command-key nil
+  "Set this to impose the `multishell:command-key' binding.
+
+You can instead bind `pop-to-shell` to your preferred key using emacs
+lisp, eg: (global-set-key \"\\M- \" 'pop-to-shell)."
   :type 'boolean
-  :group 'comint)
+  :set 'multishell:activate-command-key-setter
+  :group 'multishell)
 
-(defvar pop-to-shell-primary-name "*shell*"
+;; Assert the customizations whenever the package is loaded:
+(with-eval-after-load "poptoshell"
+  (multishell:implement-command-key-choice))
+
+(defcustom multishell:pop-to-frame nil
+  "*If non-nil, jump to a frame already showing the shell, if another is.
+
+Otherwise, open a new window in the current frame.
+
+\(Adjust `pop-up-windows' to change other-buffer vs current-buffer behavior.)"
+  :type 'boolean
+  :group 'multishell)
+
+;; (defcustom multishell:persist-shell-names nil
+;;   "Remember shell name/path associations across sessions. Note well:
+;; This will activate minibuffer history persistence, in general, if it's not
+;; already active."
+;;   :type 'boolean
+;;  :group 'shell)
+
+(defvar multishell:name-path-assoc nil
+  "Assoc list from name to path")
+
+(defvar multishell:primary-name "*shell*"
   "Shell name to use for un-modified pop-to-shell buffer target.")
 (defvar multishell:buffer-name-history nil
   "Distinct pop-to-shell completion history container.")
 
 (defun pop-to-shell (&optional arg)
-
-  "Navigate to or within local and remote shell buffers.
+  "Easily navigate to and within multiple shell buffers, local and remote.
 
 Use universal arguments to launch and choose between alternate
 shell buffers and to select which is default.  Prepend a path to
 a new shell name to launch a shell in that directory, and use
 Emacs tramp syntax to launch a remote shell.
+
+Customize-group `multishell' to set up a key binding and tweak behaviors.
 
 ==== Basic operation:
 
@@ -57,18 +145,18 @@ Emacs tramp syntax to launch a remote shell.
  - If not in a shell buffer (or with universal argument), go to a
    window that is already showing the (a) shell buffer, if any.
 
-   We use `pop-up-windows', so you can adjust/customize it
-   to set the other-buffer/same-buffer behavior.
-
    In this case, the cursor is left in its prior position in the
    shell buffer. Repeating the command will then go to the
    process input point, per the first item in this list.
 
- - Otherwise, start a new shell buffer, using the current
-   directory as the working directory..
+   We respect `pop-up-windows', so you can adjust it to set the
+   other-buffer/same-buffer behavior.
 
-If the resulting buffer exists and its shell process was
-disconnected or otherwise stopped, it's resumed.
+ - Otherwise, start a new shell buffer, using the current
+   directory as the working directory.
+
+If a buffer with the resulting name exists and its shell process
+was disconnected or otherwise stopped, it's resumed.
 
 ===== Universal arg to start and select between named shell buffers:
 
@@ -92,36 +180,49 @@ single or doubled universal arguments:
 
 The shell buffer name you give to the prompt for a universal arg
 can include a preceding path. That will be used for the startup
-directory - and can include tramp remote syntax to specify a
-remote shell. If there is an element after a final '/', that's used for the buffer name. Otherwise, the host, domain, or path is used.
+directory. You can use tramp remote syntax to specify a remote
+shell. If there is an element after a final '/', that's used for
+the buffer name. Otherwise, the host, domain, or path is used.
 
-For example: '/ssh:myriadicity.net:/' or
-'/ssh:myriadicity.net|sudo:root@myriadicity.net:/\#myr', etc.
-The stuff between the '/' slashes will be used for
-starting the remote shell, and the stuff after the second
-slash will be used for the shell name."
+For example:
+
+* Use '/ssh:example.net:/' for a shell buffer on example.net named
+  \"example.net\".
+* '/ssh:example.net|sudo:root@example.net:/\#ex' for a root shell on 
+  example.net named \"#ex\"."
+
+;; I'm leaving the following out of the docstring for now because just
+;; saving the buffer names, and not the paths, yields sometimes unwanted
+;; behavior.
+
+;; ===== Persisting your alternate shell buffer names and paths:
+
+;; You can use emacs builtin SaveHist to preserve your alternate
+;; shell buffer names and paths across emacs sessions. To do so,
+;; customize the `savehist' group, and:
+
+;; 1. Add `pop-to-shell-buffer-name-history' to Savehist Additional Variables.
+;; 2. Activate Savehist Mode, if not already activated.
+;; 3. Save.
 
   (interactive "P")
 
-  (if (not (boundp 'shell-buffer-name))
-      (setq shell-buffer-name "*shell*"))
-
   (let* ((from-buffer (current-buffer))
+         (from-buffer-is-shell (eq major-mode 'shell-mode))
          (doublearg (equal arg '(16)))
          (temp (if arg
                    (multishell:read-bare-shell-buffer-name
                     (format "Shell buffer name [%s]%s "
                             (substring-no-properties
-                             pop-to-shell-primary-name
-                             1 (- (length pop-to-shell-primary-name) 1))
+                             multishell:primary-name
+                             1 (- (length multishell:primary-name) 1))
                             (if doublearg " <==" ":"))
-                    pop-to-shell-primary-name)
-                 pop-to-shell-primary-name))
-         ;; Make sure it is bracketed with asterisks; silly.
+                    multishell:primary-name)
+                 multishell:primary-name))
          use-default-dir
          (target-shell-buffer-name
           ;; Derive target name, and default-dir if any, from temp.
-          (cond ((string= temp "") pop-to-shell-primary-name)
+          (cond ((string= temp "") multishell:primary-name)
                 ((string-match "^\\*\\(/.*/\\)\\(.*\\)\\*" temp)
                  (setq use-default-dir (match-string 1 temp))
                  (bracket-asterisks 
@@ -135,22 +236,22 @@ slash will be used for the shell name."
                     (match-string 2 temp))))
                 (t (bracket-asterisks temp))))
          (curr-buff-proc (get-buffer-process from-buffer))
-         (target-buffer (if (and curr-buff-proc
-                        (not (member (buffer-name from-buffer)
-                                     non-interactive-process-buffers)))
-                   from-buffer
-                 (get-buffer target-shell-buffer-name)))
+         (target-buffer (if (and (or curr-buff-proc from-buffer-is-shell)
+                                 (not (member (buffer-name from-buffer)
+                                              non-interactive-process-buffers)))
+                            from-buffer
+                          (get-buffer target-shell-buffer-name)))
          inwin
          already-there)
 
     (when doublearg
-      (setq pop-to-shell-primary-name target-shell-buffer-name))
+      (setq multishell:primary-name target-shell-buffer-name))
 
     ;; Situate:
 
     (cond 
 
-     ((and curr-buff-proc
+     ((and (or curr-buff-proc from-buffer-is-shell)
            (not arg)
            (eq from-buffer target-buffer)
            (not (eq target-shell-buffer-name (buffer-name from-buffer))))
@@ -162,12 +263,12 @@ slash will be used for the shell name."
       (setq already-there t))
 
      ((or (not target-buffer)
-          (not (setq inwin (get-visible-win-for-buffer target-buffer))))
+          (not (setq inwin (get-visible-window-for-buffer target-buffer))))
       ;; No preexisting shell buffer, or not in a visible window:
       (pop-to-buffer target-shell-buffer-name pop-up-windows))
 
        ;; Buffer exists and already has a window - jump to it:
-     (t (if (and pop-to-shell-frame
+     (t (if (and multishell:pop-to-frame
                  inwin
                  (not (equal (window-frame (selected-window))
                              (window-frame inwin))))
@@ -185,22 +286,19 @@ slash will be used for the shell name."
     ;; Activate:
 
     (if (not (comint-check-proc (current-buffer)))
-        (start-shell-in-buffer (buffer-name (current-buffer))))
+        (multishell:start-shell-in-buffer (buffer-name (current-buffer))))
 
     ;; If the destination buffer has a stopped process, resume it:
     (let ((process (get-buffer-process (current-buffer))))
       (if (and process (equal 'stop (process-status process)))
           (continue-process process)))
-    (if (and (not already-there)
-             (not (equal (current-buffer) from-buffer)))
-        t
+    (when (or already-there
+             (equal (current-buffer) from-buffer))
       (goto-char (point-max))
       (and (get-buffer-process from-buffer)
-           (goto-char (process-mark (get-buffer-process from-buffer)))))
-    )
-)
+           (goto-char (process-mark (get-buffer-process from-buffer)))))))
 
-(defun get-visible-win-for-buffer (buffer)
+(defun get-visible-window-for-buffer (buffer)
   "Return visible window containing buffer."
   (catch 'got-a-vis
     (walk-windows
@@ -255,7 +353,7 @@ on empty input."
   (if (string= (substring name -1) "*")
       (setq name (substring name 0 -1)))
   name)
-(defun start-shell-in-buffer (buffer-name)
+(defun multishell:start-shell-in-buffer (buffer-name)
   "Ensure a shell is started, using whatever name we're passed."
   ;; We work around shell-mode's bracketing of the buffer name, and do
   ;; some tramp-mode hygiene for remote connections.
