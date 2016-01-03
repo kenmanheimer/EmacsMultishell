@@ -140,6 +140,8 @@ Otherwise, open a new window in the current frame.
   "Shell name to use for un-modified pop-to-shell buffer target.")
 (defvar multishell:buffer-name-history nil
   "Distinct pop-to-shell completion history container.")
+(defvar multishell:buffer-name-path-history nil
+  "Another pop-to-shell completion history container, including paths.")
 
 (defun pop-to-shell (&optional arg)
   "Easily navigate to and within multiple shell buffers, local and remote.
@@ -230,31 +232,19 @@ For example:
   (let* ((from-buffer (current-buffer))
          (from-buffer-is-shell (eq major-mode 'shell-mode))
          (doublearg (equal arg '(16)))
-         (temp (if arg
-                   (multishell:read-bare-shell-buffer-name
-                    (format "Shell buffer name [%s]%s "
-                            (substring-no-properties
-                             multishell:primary-name
-                             1 (- (length multishell:primary-name) 1))
-                            (if doublearg " <==" ":"))
-                    multishell:primary-name)
-                 multishell:primary-name))
-         use-default-dir
-         (target-shell-buffer-name
-          ;; Derive target name, and default-dir if any, from temp.
-          (cond ((string= temp "") multishell:primary-name)
-                ((string-match "^\\*\\(/.*/\\)\\(.*\\)\\*" temp)
-                 (setq use-default-dir (match-string 1 temp))
-                 (multishell:bracket-asterisks 
-                  (if (string= (match-string 2 temp) "")
-                      (let ((v (tramp-dissect-file-name
-                                use-default-dir)))
-                        (or (tramp-file-name-host v)
-                            (tramp-file-name-domain v)
-                            (tramp-file-name-localname v)
-                            use-default-dir))
-                    (match-string 2 temp))))
-                (t (multishell:bracket-asterisks temp))))
+         (target-name-and-path
+          (multishell:derive-target-name-and-path
+           (if arg
+               (multishell:read-bare-shell-buffer-name
+                (format "Shell buffer name [%s]%s "
+                        (substring-no-properties
+                         multishell:primary-name
+                         1 (- (length multishell:primary-name) 1))
+                        (if doublearg " <==" ":"))
+                multishell:primary-name)
+             multishell:primary-name)))
+         (use-default-dir (cadr target-name-and-path))
+         (target-shell-buffer-name (car target-name-and-path))
          (curr-buff-proc (get-buffer-process from-buffer))
          (target-buffer (if (and (or curr-buff-proc from-buffer-is-shell)
                                  (not (member (buffer-name from-buffer)
@@ -300,14 +290,12 @@ For example:
 
     ;; We're in the buffer.
 
+    ;; Activate:
+    (when (not (comint-check-proc (current-buffer)))
+      (multishell:start-shell-in-buffer (buffer-name (current-buffer))))
     ;; If we have a use-default-dir, impose it:
     (when use-default-dir
-        (cd use-default-dir))
-
-    ;; Activate:
-
-    (if (not (comint-check-proc (current-buffer)))
-        (multishell:start-shell-in-buffer (buffer-name (current-buffer))))
+      (cd use-default-dir))
 
     ;; If the destination buffer has a stopped process, resume it:
     (let ((process (get-buffer-process (current-buffer))))
@@ -359,6 +347,31 @@ on empty input."
                                'multishell:buffer-name-history ; HIST
                                )))
     (if (not (string= got "")) (multishell:bracket-asterisks got) default)))
+(defun multishell:derive-target-name-and-path (path-ish)
+  "Give tramp-style PATH-ISH, determine target name and default directory.
+
+The name is the part of the string after the final '/' slash, if
+any. Otherwise, it's either the host-name, domain-name, or local
+host name. The path is everything besides the string following
+the final '/' slash.
+
+Return them as a list (name dir), with dir nil if none given."
+  (let (name (path "") dir)
+    (cond ((string= path-ish "") (setq dir multishell:primary-name))
+          ((string-match "^\\*\\(/.*/\\)\\(.*\\)\\*" path-ish)
+           (setq path (match-string 1 path-ish))
+           (setq name
+                 (multishell:bracket-asterisks
+                  (if (string= (match-string 2 path-ish) "")
+                      (let ((v (tramp-dissect-file-name
+                                path)))
+                        (or (tramp-file-name-host v)
+                            (tramp-file-name-domain v)
+                            (tramp-file-name-localname v)
+                            path))
+                    (match-string 2 path-ish)))))
+          (t (setq name (multishell:bracket-asterisks path-ish))))
+    (list name path)))
 
 (defun multishell:bracket-asterisks (name)
   "Return a copy of name, ensuring it has an asterisk at the beginning and end."
@@ -378,9 +391,6 @@ on empty input."
   "Ensure a shell is started, using whatever name we're passed."
   ;; We work around shell-mode's bracketing of the buffer name, and do
   ;; some tramp-mode hygiene for remote connections.
-
-  (require 'comint)
-  (require 'shell)
 
   (let* ((buffer buffer-name)
          (prog (or explicit-shell-file-name
