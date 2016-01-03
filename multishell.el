@@ -2,9 +2,8 @@
 
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
-;; Author: Ken Manheimer <ken dot manheimer at gmail...>
-;; Version: 1.0.0
-;; Maintainer: Ken Manheimer <ken dot manheimer at gmail...>
+;; Author: Ken Manheimer <ken.manheimer@gmail.com>
+;; Version: 1.0.2
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsUtils
@@ -288,14 +287,13 @@ For example:
                           target-shell-buffer-name))
             (pop-to-buffer target-shell-buffer-name t))))
 
-    ;; We're in the buffer.
+    ;; We're in the buffer. Activate:
 
-    ;; Activate:
-    (when (not (comint-check-proc (current-buffer)))
-      (multishell:start-shell-in-buffer (buffer-name (current-buffer))))
-    ;; If we have a use-default-dir, impose it:
-    (when use-default-dir
-      (cd use-default-dir))
+    (cond ((not (comint-check-proc (current-buffer)))
+           (multishell:start-shell-in-buffer (buffer-name (current-buffer))
+                                             use-default-dir))
+          (use-default-dir
+           (cd use-default-dir)))
 
     ;; If the destination buffer has a stopped process, resume it:
     (let ((process (get-buffer-process (current-buffer))))
@@ -387,7 +385,7 @@ Return them as a list (name dir), with dir nil if none given."
   (if (string= (substring name -1) "*")
       (setq name (substring name 0 -1)))
   name)
-(defun multishell:start-shell-in-buffer (buffer-name)
+(defun multishell:start-shell-in-buffer (buffer-name dir)
   "Ensure a shell is started, using whatever name we're passed."
   ;; We work around shell-mode's bracketing of the buffer name, and do
   ;; some tramp-mode hygiene for remote connections.
@@ -409,6 +407,8 @@ Return them as a list (name dir), with dir nil if none given."
       (tramp-cleanup-connection
        (tramp-dissect-file-name default-directory 'noexpand)
        'keep-debug 'keep-password))
+    (if dir
+        (cd dir))
     (setq buffer (set-buffer (apply 'make-comint
                                     (multishell:unbracket-asterisks buffer-name)
                                     prog
