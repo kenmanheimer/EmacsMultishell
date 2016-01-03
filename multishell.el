@@ -33,6 +33,7 @@
 ;;
 ;;; TODO:
 ;;
+;; * Fix operation given local path without specified name
 ;; * Preserveable (savehist) history that associates names with paths
 ;;   - Using an association list between names and paths
 ;;   - Searched for search backwards/forwards on isearch-like M-r/M-s bindings
