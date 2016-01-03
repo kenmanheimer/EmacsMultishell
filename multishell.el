@@ -2,8 +2,8 @@
 
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
-;; Author: Ken Manheimer <ken dot manheimer at gmail...>
-;; Version: 1.0.0
+;; Author: Ken Manheimer <ken.manheimer@gmail.com>
+;; Version: 1.0.1
 ;; Maintainer: Ken Manheimer <ken dot manheimer at gmail...>
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
