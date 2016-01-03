@@ -38,10 +38,14 @@
 ;;   - Searched for search backwards/forwards on isearch-like M-r/M-s bindings
 ;;     - *Not* searched for regular completion
 ;;   - Editible
-;;     - Using isearch keybinding M-e
-;;     - Edits path
+;;     - During confirmation for new buffers - to use historical one
+;;     - Or with minibuffer setup created key binding (isearch-like) M-e
+;;       - M-e in empty initial provides completion on historicals
+;;     - User can edit the entire path, changing the association
 ;;     - New association overrides previous
 ;;     - Deleting path removes association and history entry
+;;   - Tracks buffer name changes
+;;     - Using buffer-list-update-hook
 ;; * Customize activation of savehist
 ;;   - Customize entry has warning about activating savehist
 ;;   - Adds the name/path association list to savehist-additional-variables
