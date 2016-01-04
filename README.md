@@ -16,8 +16,9 @@ I've been using Gnu Emacs since it was publicly available (1985?), and have cont
   * Prepend a path to a new shell name to launch a shell in that directory,
   * and use Emacs tramp path syntax to launch a remote shell.
 
-  On top of shell and tramp, this turns emacs into a versatile systems
-  management tool.
+  On top of emacs' powerful shell and tramp facilities, this turns emacs
+  into a versatile tool for conducting operations and development across
+  numerous hosts.
 
 * **[xsel.el](./xsel.el)**
 
