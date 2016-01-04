@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 0
+;; Version: 1.0.3
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsUtils
@@ -11,14 +11,14 @@
 ;;; Commentary:
 ;;
 ;; Easily use and manage multiple shell buffers, including remote shells.
-;; Fundamentally, multishell is the function `multishell-pop-to-shell' -
-;; akin to `pop-to-buffer' - plus a keybinding. Together, they enable you to:
+;; Fundamentally, multishell is the function `multishell-pop-to-shell - like
+;; pop-to-buffer - plus a keybinding. Together, they enable you to:
 ;;
 ;; * Get to the input point from wherever you are in a shell buffer,
 ;; * ... or to a shell buffer if you're not currently in one.
 ;; * Use universal arguments to launch and choose among alternate shell buffers,
 ;; * ... and select which is default.
-;; * Prepend a path to a new shell name to launch a shell in that directory,
+;; * Append a path to a new shell name to launch a shell in that directory,
 ;; * ... and use a path with Emacs tramp syntax to launch a remote shell.
 ;;
 ;; Customize-group `multishell` to select and activate a keybinding and set
@@ -28,19 +28,24 @@
 ;;
 ;;; Change Log:
 ;;
-;; 2016-01-02 Ken Manheimer - initial release
+;; 2016-01-02 Ken Manheimer - working on this in public, but not yet released.
 ;;
 ;;; TODO:
 ;;
+;; * Fix operation given local path without specified name
 ;; * Preserveable (savehist) history that associates names with paths
 ;;   - Using an association list between names and paths
 ;;   - Searched for search backwards/forwards on isearch-like M-r/M-s bindings
 ;;     - *Not* searched for regular completion
 ;;   - Editible
-;;     - Using isearch keybinding M-e
-;;     - Edits path
+;;     - During confirmation for new buffers - to use historical one
+;;     - Or with minibuffer setup created key binding (isearch-like) M-e
+;;       - M-e in empty initial provides completion on historicals
+;;     - User can edit the entire path, changing the association
 ;;     - New association overrides previous
 ;;     - Deleting path removes association and history entry
+;;   - Tracks buffer name changes
+;;     - Using buffer-list-update-hook
 ;; * Customize activation of savehist
 ;;   - Customize entry has warning about activating savehist
 ;;   - Adds the name/path association list to savehist-additional-variables
@@ -63,23 +68,23 @@ with allout-mode."
 (defcustom multishell-non-interactive-process-buffers
   '("*compilation*" "*grep*")
   "Names of buffers that have processes but are not for interaction.
-Identify buffers that you don't want to be multishell-pop-to-shell \"sticky\"."
+Identify which buffers you don't want to be multishell-pop-to-shell \"sticky\"."
   :type '(repeat string)
   :group 'multishell)
 (defcustom multishell-command-key "\M- "
   "The key to use if `multishell-activate-command-key' is true.
 
-You can instead bind `multishell-pop-to-shell` to your preferred key using
-emacs lisp, eg: (global-set-key \"\\M- \" 'multishell-pop-to-shell)."
+You can instead manually bind `multishell-pop-to-shell` using emacs
+lisp, eg: (global-set-key \"\\M- \" 'multishell-pop-to-shell)."
   :type 'key-sequence
   :group 'multishell)
 
-(defvar multishell-responsible-for-command-key nil
+(defvar multishell--responsible-for-command-key nil
   "Multishell internal.")
 (defun multishell-activate-command-key-setter (symbol setting)
   "Implement `multishell-activate-command-key' choice."
   (set-default 'multishell-activate-command-key setting)
-  (when (or setting multishell-responsible-for-command-key)
+  (when (or setting multishell--responsible-for-command-key)
     (multishell-implement-command-key-choice (not setting))))
 (defun multishell-implement-command-key-choice (&optional unbind)
   "If settings dicate, implement binding of multishell command key.
@@ -95,14 +100,14 @@ If optional UNBIND is true, globally unbind the key.
                    (boundp 'multishell-command-key)))
          nil)
         ((and multishell-activate-command-key multishell-command-key)
-         (setq multishell-responsible-for-command-key t)
+         (setq multishell--responsible-for-command-key t)
          (global-set-key multishell-command-key 'multishell-pop-to-shell))))
 
 (defcustom multishell-activate-command-key nil
   "Set this to impose the `multishell-command-key' binding.
 
-You can instead bind `multishell-pop-to-shell` to your preferred key using
-emacs lisp, eg: (global-set-key \"\\M- \" 'multishell-pop-to-shell)."
+You can instead manually bind `multishell-pop-to-shell` using emacs
+lisp, eg: (global-set-key \"\\M- \" 'multishell-pop-to-shell)."
   :type 'boolean
   :set 'multishell-activate-command-key-setter
   :group 'multishell)
@@ -114,9 +119,12 @@ emacs lisp, eg: (global-set-key \"\\M- \" 'multishell-pop-to-shell)."
 (defcustom multishell-pop-to-frame nil
   "*If non-nil, jump to a frame already showing the shell, if another is.
 
-Otherwise, open a new window in the current frame.
+Otherwise, disregard already-open windows on the shell if they're
+in another frame, and open a new window on the shell in the
+current frame.
 
-\(Adjust `pop-up-windows' to change other-buffer vs current-buffer behavior.)"
+\(Use `pop-up-windows' to change multishell other-buffer vs
+current-buffer behavior.)"
   :type 'boolean
   :group 'multishell)
 
@@ -131,15 +139,18 @@ Otherwise, open a new window in the current frame.
   "Assoc list from name to path")
 
 (defvar multishell-primary-name "*shell*"
-  "Shell name to use for un-modified `multishell-pop-to-shell' buffer target.")
+  "Shell name to use for un-modified multishell-pop-to-shell buffer target.")
 (defvar multishell-buffer-name-history nil
-  "Distinct `multishell-pop-to-shell' completion history container.")
+  "Distinct multishell-pop-to-shell completion history container.")
+(defvar multishell-buffer-name-path-history nil
+  "Another multishell-pop-to-shell completion history container,
+including paths.")
 
 (defun multishell-pop-to-shell (&optional arg)
   "Easily navigate to and within multiple shell buffers, local and remote.
 
 Use universal arguments to launch and choose between alternate
-shell buffers and to select which is default.  Prepend a path to
+shell buffers and to select which is default.  Append a path to
 a new shell name to launch a shell in that directory, and use
 Emacs tramp syntax to launch a remote shell.
 
@@ -192,7 +203,7 @@ single or doubled universal arguments:
 ===== Select starting directory and remote host:
 
 The shell buffer name you give to the prompt for a universal arg
-can include a preceding path. That will be used for the startup
+can include an appended path. That will be used for the startup
 directory. You can use tramp remote syntax to specify a remote
 shell. If there is an element after a final '/', that's used for
 the buffer name. Otherwise, the host, domain, or path is used.
@@ -201,7 +212,7 @@ For example:
 
 * Use '/ssh:example.net:/' for a shell buffer on example.net named
   \"example.net\".
-* '/ssh:example.net|sudo:root@example.net:/\#ex' for a root shell on 
+* '\#ex/ssh:example.net|sudo:root@example.net:/' for a root shell on 
   example.net named \"#ex\"."
 
 ;; I'm leaving the following out of the docstring for now because just
@@ -224,31 +235,19 @@ For example:
   (let* ((from-buffer (current-buffer))
          (from-buffer-is-shell (eq major-mode 'shell-mode))
          (doublearg (equal arg '(16)))
-         (temp (if arg
-                   (multishell-read-bare-shell-buffer-name
-                    (format "Shell buffer name [%s]%s "
-                            (substring-no-properties
-                             multishell-primary-name
-                             1 (- (length multishell-primary-name) 1))
-                            (if doublearg " <==" ":"))
-                    multishell-primary-name)
-                 multishell-primary-name))
-         use-default-dir
-         (target-shell-buffer-name
-          ;; Derive target name, and default-dir if any, from temp.
-          (cond ((string= temp "") multishell-primary-name)
-                ((string-match "^\\*\\(/.*/\\)\\(.*\\)\\*" temp)
-                 (setq use-default-dir (match-string 1 temp))
-                 (multishell-bracket-asterisks 
-                  (if (string= (match-string 2 temp) "")
-                      (let ((v (tramp-dissect-file-name
-                                use-default-dir)))
-                        (or (tramp-file-name-host v)
-                            (tramp-file-name-domain v)
-                            (tramp-file-name-localname v)
-                            use-default-dir))
-                    (match-string 2 temp))))
-                (t (multishell-bracket-asterisks temp))))
+         (target-name-and-path
+          (multishell-derive-target-name-and-path
+           (if arg
+               (multishell-read-bare-shell-buffer-name
+                (format "Shell buffer name [%s]%s "
+                        (substring-no-properties
+                         multishell-primary-name
+                         1 (- (length multishell-primary-name) 1))
+                        (if doublearg " <==" ":"))
+                multishell-primary-name)
+             multishell-primary-name)))
+         (use-default-dir (cadr target-name-and-path))
+         (target-shell-buffer-name (car target-name-and-path))
          (curr-buff-proc (get-buffer-process from-buffer))
          (target-buffer (if (and (or curr-buff-proc from-buffer-is-shell)
                                  (not (member (buffer-name from-buffer)
@@ -350,6 +349,40 @@ on empty input."
                                'multishell-buffer-name-history ; HIST
                                )))
     (if (not (string= got "")) (multishell-bracket-asterisks got) default)))
+(defun multishell-derive-target-name-and-path (path-ish)
+  "Give tramp-style PATH-ISH, determine target name and default directory.
+
+The name is the part of the string before the initial '/' slash,
+if any. Otherwise, it's either the host-name, domain-name, final
+directory name, or local host name. The path is everything
+besides the string before the initial '/' slash.
+
+Return them as a list (name dir), with dir nil if none given."
+  (let (name (path "") dir)
+    (cond ((string= path-ish "") (setq dir multishell-primary-name))
+          ((string-match "^\\*\\([^/]*\\)\\(/.*/\\)\\(.*\\)\\*" path-ish)
+           ;; We have a path, use it
+           (let ((overt-name (match-string 1 path-ish))
+                 (overt-path (match-string 2 path-ish))
+                 (trailing-name (match-string 3 path-ish)))
+             (if (string= overt-name "") (setq overt-name nil))
+             (if (string= overt-path "") (setq overt-path nil))
+             (if (string= trailing-name "") (setq trailing-name nil))
+             (setq path (concat overt-path trailing-name))
+             (setq name
+                   (multishell-bracket-asterisks
+                    (or overt-name
+                        (if (file-remote-p path)
+                            (let ((vec (tramp-dissect-file-name path)))
+                              (or (tramp-file-name-host vec)
+                                  (tramp-file-name-domain vec)
+                                  (tramp-file-name-localname vec)
+                                  trailing-name
+                                  system-name))
+                          (multishell-unbracket-asterisks
+                           multishell-primary-name)))))))
+          (t (setq name (multishell-bracket-asterisks path-ish))))
+    (list name path)))
 
 (defun multishell-bracket-asterisks (name)
   "Return a copy of name, ensuring it has an asterisk at the beginning and end."
@@ -365,8 +398,9 @@ on empty input."
   (if (string= (substring name -1) "*")
       (setq name (substring name 0 -1)))
   name)
-(defun multishell-start-shell-in-buffer (buffer-name dir)
-  "Ensure a shell is started, using whatever name we're passed."
+
+(defun multishell-start-shell-in-buffer (buffer-name path)
+  "Ensure a shell is started, with name NAME and PATH."
   ;; We work around shell-mode's bracketing of the buffer name, and do
   ;; some tramp-mode hygiene for remote connections.
 
@@ -379,6 +413,8 @@ on empty input."
          (startfile (concat "~/.emacs_" name))
          (xargs-name (intern-soft (concat "explicit-" name "-args"))))
     (set-buffer buffer-name)
+    (if (and path (not (string= path "")))
+        (setq default-directory path))
     (when (and (file-remote-p default-directory)
                (eq major-mode 'shell-mode)
                (not (comint-check-proc (current-buffer))))
@@ -387,8 +423,8 @@ on empty input."
       (tramp-cleanup-connection
        (tramp-dissect-file-name default-directory 'noexpand)
        'keep-debug 'keep-password))
-    (if dir
-        (cd dir))
+    ;; (cd default-directory) will reconnect a disconnected remote:
+    (cd default-directory)
     (setq buffer (set-buffer (apply 'make-comint
                                     (multishell-unbracket-asterisks buffer-name)
                                     prog
