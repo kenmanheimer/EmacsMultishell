@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 0
+;; Version: 1.0.4
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsUtils
@@ -372,7 +372,7 @@ Return them as a list (name dir), with dir nil if none given."
              (setq name
                    (multishell-bracket-asterisks
                     (or overt-name
-                        (if (tramp-file-name-p path)
+                        (if (file-remote-p path)
                             (let ((vec (tramp-dissect-file-name path)))
                               (or (tramp-file-name-host vec)
                                   (tramp-file-name-domain vec)
@@ -399,8 +399,8 @@ Return them as a list (name dir), with dir nil if none given."
       (setq name (substring name 0 -1)))
   name)
 
-(defun multishell-start-shell-in-buffer (buffer-name dir)
-  "Ensure a shell is started, using whatever name we're passed."
+(defun multishell-start-shell-in-buffer (buffer-name path)
+  "Ensure a shell is started, with name NAME and PATH."
   ;; We work around shell-mode's bracketing of the buffer name, and do
   ;; some tramp-mode hygiene for remote connections.
 
@@ -413,6 +413,8 @@ Return them as a list (name dir), with dir nil if none given."
          (startfile (concat "~/.emacs_" name))
          (xargs-name (intern-soft (concat "explicit-" name "-args"))))
     (set-buffer buffer-name)
+    (if (and path (not (string= path "")))
+        (setq default-directory path))
     (when (and (file-remote-p default-directory)
                (eq major-mode 'shell-mode)
                (not (comint-check-proc (current-buffer))))
@@ -421,8 +423,8 @@ Return them as a list (name dir), with dir nil if none given."
       (tramp-cleanup-connection
        (tramp-dissect-file-name default-directory 'noexpand)
        'keep-debug 'keep-password))
-    (if dir
-        (cd dir))
+    ;; (cd default-directory) will reconnect a disconnected remote:
+    (cd default-directory)
     (setq buffer (set-buffer (apply 'make-comint
                                     (multishell-unbracket-asterisks buffer-name)
                                     prog
