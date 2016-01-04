@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.0.2
+;; Version: 0
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsUtils
@@ -18,7 +18,7 @@
 ;; * ... or to a shell buffer if you're not currently in one.
 ;; * Use universal arguments to launch and choose among alternate shell buffers,
 ;; * ... and select which is default.
-;; * Prepend a path to a new shell name to launch a shell in that directory,
+;; * Append a path to a new shell name to launch a shell in that directory,
 ;; * ... and use a path with Emacs tramp syntax to launch a remote shell.
 ;;
 ;; Customize-group `multishell` to select and activate a keybinding and set
@@ -28,7 +28,7 @@
 ;;
 ;;; Change Log:
 ;;
-;; 2016-01-02 Ken Manheimer - initial release
+;; 2016-01-02 Ken Manheimer - working on this in public.
 ;;
 ;;; TODO:
 ;;
@@ -146,7 +146,7 @@ Otherwise, open a new window in the current frame.
   "Easily navigate to and within multiple shell buffers, local and remote.
 
 Use universal arguments to launch and choose between alternate
-shell buffers and to select which is default.  Prepend a path to
+shell buffers and to select which is default.  Append a path to
 a new shell name to launch a shell in that directory, and use
 Emacs tramp syntax to launch a remote shell.
 
@@ -199,7 +199,7 @@ single or doubled universal arguments:
 ===== Select starting directory and remote host:
 
 The shell buffer name you give to the prompt for a universal arg
-can include a preceding path. That will be used for the startup
+can include an appended path. That will be used for the startup
 directory. You can use tramp remote syntax to specify a remote
 shell. If there is an element after a final '/', that's used for
 the buffer name. Otherwise, the host, domain, or path is used.
@@ -208,7 +208,7 @@ For example:
 
 * Use '/ssh:example.net:/' for a shell buffer on example.net named
   \"example.net\".
-* '/ssh:example.net|sudo:root@example.net:/\#ex' for a root shell on 
+* '\#ex/ssh:example.net|sudo:root@example.net:/' for a root shell on 
   example.net named \"#ex\"."
 
 ;; I'm leaving the following out of the docstring for now because just
@@ -348,26 +348,35 @@ on empty input."
 (defun multishell:derive-target-name-and-path (path-ish)
   "Give tramp-style PATH-ISH, determine target name and default directory.
 
-The name is the part of the string after the final '/' slash, if
-any. Otherwise, it's either the host-name, domain-name, or local
-host name. The path is everything besides the string following
-the final '/' slash.
+The name is the part of the string before the initial '/' slash,
+if any. Otherwise, it's either the host-name, domain-name, final
+directory name, or local host name. The path is everything
+besides the string before the initial '/' slash.
 
 Return them as a list (name dir), with dir nil if none given."
   (let (name (path "") dir)
     (cond ((string= path-ish "") (setq dir multishell:primary-name))
-          ((string-match "^\\*\\(/.*/\\)\\(.*\\)\\*" path-ish)
-           (setq path (match-string 1 path-ish))
-           (setq name
-                 (multishell:bracket-asterisks
-                  (if (string= (match-string 2 path-ish) "")
-                      (let ((v (tramp-dissect-file-name
-                                path)))
-                        (or (tramp-file-name-host v)
-                            (tramp-file-name-domain v)
-                            (tramp-file-name-localname v)
-                            path))
-                    (match-string 2 path-ish)))))
+          ((string-match "^\\*\\([^/]*\\)\\(/.*/\\)\\(.*\\)\\*" path-ish)
+           ;; We have a path, use it
+           (let ((overt-name (match-string 1 path-ish))
+                 (overt-path (match-string 2 path-ish))
+                 (trailing-name (match-string 3 path-ish)))
+             (if (string= overt-name "") (setq overt-name nil))
+             (if (string= overt-path "") (setq overt-path nil))
+             (if (string= trailing-name "") (setq trailing-name nil))
+             (setq path (concat overt-path trailing-name))
+             (setq name
+                   (multishell:bracket-asterisks
+                    (or overt-name
+                        (if (tramp-file-name-p path)
+                            (let ((vec (tramp-dissect-file-name path)))
+                              (or (tramp-file-name-host vec)
+                                  (tramp-file-name-domain vec)
+                                  (tramp-file-name-localname vec)
+                                  trailing-name
+                                  system-name))
+                          (multishell:unbracket-asterisks
+                           multishell:primary-name)))))))
           (t (setq name (multishell:bracket-asterisks path-ish))))
     (list name path)))
 
@@ -385,6 +394,7 @@ Return them as a list (name dir), with dir nil if none given."
   (if (string= (substring name -1) "*")
       (setq name (substring name 0 -1)))
   name)
+
 (defun multishell:start-shell-in-buffer (buffer-name dir)
   "Ensure a shell is started, using whatever name we're passed."
   ;; We work around shell-mode's bracketing of the buffer name, and do
