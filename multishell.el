@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.0.2
+;; Version: 0
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsUtils
@@ -11,8 +11,8 @@
 ;;; Commentary:
 ;;
 ;; Easily use and manage multiple shell buffers, including remote shells.
-;; Fundamentally, multishell is the function `multishell:pop-to-shell - like
-;; pop-to-buffer - plus a keybinding. Together, they enable you to:
+;; Fundamentally, multishell is the function `multishell-pop-to-shell' -
+;; akin to `pop-to-buffer' - plus a keybinding. Together, they enable you to:
 ;;
 ;; * Get to the input point from wherever you are in a shell buffer,
 ;; * ... or to a shell buffer if you're not currently in one.
@@ -24,7 +24,7 @@
 ;; Customize-group `multishell` to select and activate a keybinding and set
 ;; various behaviors.
 ;;
-;; See the pop-to-shell docstring for details.
+;; See the multishell-pop-to-shell docstring for details.
 ;;
 ;;; Change Log:
 ;;
@@ -60,58 +60,58 @@ Customize `allout-widgets-auto-activation' to activate allout-widgets
 with allout-mode."
   :group 'shell)
 
-(defcustom multishell:non-interactive-process-buffers
+(defcustom multishell-non-interactive-process-buffers
   '("*compilation*" "*grep*")
   "Names of buffers that have processes but are not for interaction.
-Add names of buffers that you don't want pop-to-shell to stick around in."
+Identify buffers that you don't want to be multishell-pop-to-shell \"sticky\"."
   :type '(repeat string)
   :group 'multishell)
-(defcustom multishell:command-key "\M- "
-  "The key to use if `multishell:activate-command-key' is true.
+(defcustom multishell-command-key "\M- "
+  "The key to use if `multishell-activate-command-key' is true.
 
-You can instead bind `pop-to-shell` to your preferred key using emacs
-lisp, eg: (global-set-key \"\\M- \" 'pop-to-shell)."
+You can instead bind `multishell-pop-to-shell` to your preferred key using
+emacs lisp, eg: (global-set-key \"\\M- \" 'multishell-pop-to-shell)."
   :type 'key-sequence
   :group 'multishell)
 
-(defvar multishell:responsible-for-command-key nil
+(defvar multishell-responsible-for-command-key nil
   "Multishell internal.")
-(defun multishell:activate-command-key-setter (symbol setting)
-  "Implement `multishell:activate-command-key' choice."
-  (set-default 'multishell:activate-command-key setting)
-  (when (or setting multishell:responsible-for-command-key)
-    (multishell:implement-command-key-choice (not setting))))
-(defun multishell:implement-command-key-choice (&optional unbind)
+(defun multishell-activate-command-key-setter (symbol setting)
+  "Implement `multishell-activate-command-key' choice."
+  (set-default 'multishell-activate-command-key setting)
+  (when (or setting multishell-responsible-for-command-key)
+    (multishell-implement-command-key-choice (not setting))))
+(defun multishell-implement-command-key-choice (&optional unbind)
   "If settings dicate, implement binding of multishell command key.
 
 If optional UNBIND is true, globally unbind the key.
 
-* `multishell:activate-command-key' - Set this to get the binding or not.
-* `multishell:command-key' - The key to use for the binding, if appropriate."
+* `multishell-activate-command-key' - Set this to get the binding or not.
+* `multishell-command-key' - The key to use for the binding, if appropriate."
   (cond (unbind
-         (when (and (boundp 'multishell:command-key) multishell:command-key)
-           (global-unset-key multishell:command-key)))
-        ((not (and (boundp 'multishell:activate-command-key)
-                   (boundp 'multishell:command-key)))
+         (when (and (boundp 'multishell-command-key) multishell-command-key)
+           (global-unset-key multishell-command-key)))
+        ((not (and (boundp 'multishell-activate-command-key)
+                   (boundp 'multishell-command-key)))
          nil)
-        ((and multishell:activate-command-key multishell:command-key)
-         (setq multishell:responsible-for-command-key t)
-         (global-set-key multishell:command-key 'pop-to-shell))))
+        ((and multishell-activate-command-key multishell-command-key)
+         (setq multishell-responsible-for-command-key t)
+         (global-set-key multishell-command-key 'multishell-pop-to-shell))))
 
-(defcustom multishell:activate-command-key nil
-  "Set this to impose the `multishell:command-key' binding.
+(defcustom multishell-activate-command-key nil
+  "Set this to impose the `multishell-command-key' binding.
 
-You can instead bind `pop-to-shell` to your preferred key using emacs
-lisp, eg: (global-set-key \"\\M- \" 'pop-to-shell)."
+You can instead bind `multishell-pop-to-shell` to your preferred key using
+emacs lisp, eg: (global-set-key \"\\M- \" 'multishell-pop-to-shell)."
   :type 'boolean
-  :set 'multishell:activate-command-key-setter
+  :set 'multishell-activate-command-key-setter
   :group 'multishell)
 
 ;; Assert the customizations whenever the package is loaded:
 (with-eval-after-load "multishell"
-  (multishell:implement-command-key-choice))
+  (multishell-implement-command-key-choice))
 
-(defcustom multishell:pop-to-frame nil
+(defcustom multishell-pop-to-frame nil
   "*If non-nil, jump to a frame already showing the shell, if another is.
 
 Otherwise, open a new window in the current frame.
@@ -120,22 +120,22 @@ Otherwise, open a new window in the current frame.
   :type 'boolean
   :group 'multishell)
 
-;; (defcustom multishell:persist-shell-names nil
+;; (defcustom multishell-persist-shell-names nil
 ;;   "Remember shell name/path associations across sessions. Note well:
 ;; This will activate minibuffer history persistence, in general, if it's not
 ;; already active."
 ;;   :type 'boolean
 ;;  :group 'shell)
 
-(defvar multishell:name-path-assoc nil
+(defvar multishell-name-path-assoc nil
   "Assoc list from name to path")
 
-(defvar multishell:primary-name "*shell*"
-  "Shell name to use for un-modified pop-to-shell buffer target.")
-(defvar multishell:buffer-name-history nil
-  "Distinct pop-to-shell completion history container.")
+(defvar multishell-primary-name "*shell*"
+  "Shell name to use for un-modified `multishell-pop-to-shell' buffer target.")
+(defvar multishell-buffer-name-history nil
+  "Distinct `multishell-pop-to-shell' completion history container.")
 
-(defun pop-to-shell (&optional arg)
+(defun multishell-pop-to-shell (&optional arg)
   "Easily navigate to and within multiple shell buffers, local and remote.
 
 Use universal arguments to launch and choose between alternate
@@ -214,7 +214,7 @@ For example:
 ;; shell buffer names and paths across emacs sessions. To do so,
 ;; customize the `savehist' group, and:
 
-;; 1. Add `multishell:pop-to-shell-buffer-name-history' to Savehist Additional
+;; 1. Add `multishell-pop-to-shell-buffer-name-history' to Savehist Additional
 ;;    Variables.
 ;; 2. Activate Savehist Mode, if not already activated.
 ;; 3. Save.
@@ -225,21 +225,21 @@ For example:
          (from-buffer-is-shell (eq major-mode 'shell-mode))
          (doublearg (equal arg '(16)))
          (temp (if arg
-                   (multishell:read-bare-shell-buffer-name
+                   (multishell-read-bare-shell-buffer-name
                     (format "Shell buffer name [%s]%s "
                             (substring-no-properties
-                             multishell:primary-name
-                             1 (- (length multishell:primary-name) 1))
+                             multishell-primary-name
+                             1 (- (length multishell-primary-name) 1))
                             (if doublearg " <==" ":"))
-                    multishell:primary-name)
-                 multishell:primary-name))
+                    multishell-primary-name)
+                 multishell-primary-name))
          use-default-dir
          (target-shell-buffer-name
           ;; Derive target name, and default-dir if any, from temp.
-          (cond ((string= temp "") multishell:primary-name)
+          (cond ((string= temp "") multishell-primary-name)
                 ((string-match "^\\*\\(/.*/\\)\\(.*\\)\\*" temp)
                  (setq use-default-dir (match-string 1 temp))
-                 (multishell:bracket-asterisks 
+                 (multishell-bracket-asterisks 
                   (if (string= (match-string 2 temp) "")
                       (let ((v (tramp-dissect-file-name
                                 use-default-dir)))
@@ -248,7 +248,7 @@ For example:
                             (tramp-file-name-localname v)
                             use-default-dir))
                     (match-string 2 temp))))
-                (t (multishell:bracket-asterisks temp))))
+                (t (multishell-bracket-asterisks temp))))
          (curr-buff-proc (get-buffer-process from-buffer))
          (target-buffer (if (and (or curr-buff-proc from-buffer-is-shell)
                                  (not (member (buffer-name from-buffer)
@@ -259,7 +259,7 @@ For example:
          already-there)
 
     (when doublearg
-      (setq multishell:primary-name target-shell-buffer-name))
+      (setq multishell-primary-name target-shell-buffer-name))
 
     ;; Situate:
 
@@ -278,12 +278,12 @@ For example:
 
      ((or (not target-buffer)
           (not (setq inwin
-                     (multishell:get-visible-window-for-buffer target-buffer))))
+                     (multishell-get-visible-window-for-buffer target-buffer))))
       ;; No preexisting shell buffer, or not in a visible window:
       (pop-to-buffer target-shell-buffer-name pop-up-windows))
 
        ;; Buffer exists and already has a window - jump to it:
-     (t (if (and multishell:pop-to-frame
+     (t (if (and multishell-pop-to-frame
                  inwin
                  (not (equal (window-frame (selected-window))
                              (window-frame inwin))))
@@ -295,7 +295,7 @@ For example:
     ;; We're in the buffer. Activate:
 
     (cond ((not (comint-check-proc (current-buffer)))
-           (multishell:start-shell-in-buffer (buffer-name (current-buffer))
+           (multishell-start-shell-in-buffer (buffer-name (current-buffer))
                                              use-default-dir))
           (use-default-dir
            (cd use-default-dir)))
@@ -310,7 +310,7 @@ For example:
       (and (get-buffer-process from-buffer)
            (goto-char (process-mark (get-buffer-process from-buffer)))))))
 
-(defun multishell:get-visible-window-for-buffer (buffer)
+(defun multishell-get-visible-window-for-buffer (buffer)
   "Return visible window containing buffer."
   (catch 'got-a-vis
     (walk-windows
@@ -324,7 +324,7 @@ For example:
      nil 'visible)
     nil))
 
-(defun multishell:read-bare-shell-buffer-name (prompt default)
+(defun multishell-read-bare-shell-buffer-name (prompt default)
   "PROMPT for shell buffer name, sans asterisks.
 
 Return the supplied name bracketed with the asterisks, or specified DEFAULT
@@ -347,25 +347,25 @@ on empty input."
                                nil        ; PREDICATE
                                'confirm   ; REQUIRE-MATCH
                                nil        ; INITIAL-INPUT
-                               'multishell:buffer-name-history ; HIST
+                               'multishell-buffer-name-history ; HIST
                                )))
-    (if (not (string= got "")) (multishell:bracket-asterisks got) default)))
+    (if (not (string= got "")) (multishell-bracket-asterisks got) default)))
 
-(defun multishell:bracket-asterisks (name)
+(defun multishell-bracket-asterisks (name)
   "Return a copy of name, ensuring it has an asterisk at the beginning and end."
   (if (not (string= (substring name 0 1) "*"))
       (setq name (concat "*" name)))
   (if (not (string= (substring name -1) "*"))
       (setq name (concat name "*")))
   name)
-(defun multishell:unbracket-asterisks (name)
+(defun multishell-unbracket-asterisks (name)
   "Return a copy of name, removing asterisks, if any, at beginning and end."
   (if (string= (substring name 0 1) "*")
       (setq name (substring name 1)))
   (if (string= (substring name -1) "*")
       (setq name (substring name 0 -1)))
   name)
-(defun multishell:start-shell-in-buffer (buffer-name dir)
+(defun multishell-start-shell-in-buffer (buffer-name dir)
   "Ensure a shell is started, using whatever name we're passed."
   ;; We work around shell-mode's bracketing of the buffer name, and do
   ;; some tramp-mode hygiene for remote connections.
@@ -390,7 +390,7 @@ on empty input."
     (if dir
         (cd dir))
     (setq buffer (set-buffer (apply 'make-comint
-                                    (multishell:unbracket-asterisks buffer-name)
+                                    (multishell-unbracket-asterisks buffer-name)
                                     prog
                                     (if (file-exists-p startfile)
                                         startfile)
