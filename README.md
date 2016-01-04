@@ -34,6 +34,13 @@ I've been using Gnu Emacs since it was publicly available (1985?), and have cont
   and so forth. (You can always do a regular X paste on occasions when you
   want that processing.)
 
+  NOTE well - ssh has has a little known, severe default X11 forwarding
+  timeout that leads to unexpected failures after ten minutes - yikes! To
+  mitigate it, set ForwardX11Timeout to something larger - up to the
+  unexpected max of 596h, slightly beyond which the number is ignored. See
+  http://b.kl3in.com/2012/01/x11-display-forwarding-fails-after-some-time/
+  for details.
+
 * **[pdbtrack.el](./pdbtrack.el)**
 
   [I've moved my standalone version of pdbtrack aside. I hadn't realized 
