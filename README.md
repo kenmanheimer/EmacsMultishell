@@ -3,7 +3,7 @@ EmacsUtils
 
 Handy Emacs utilities
 
-I've been using Gnu Emacs since it was publicly available (1985?), and have contributed some packages which are included with Emacs, notably the [Allout outliner](http://myriadicity.net/software-and-systems/craft/emacs-allout), [icomplete mode](http://www.emacswiki.org/emacs/IcompleteMode), and python-mode's [pdbtrack functionality](http://myriadicity.net/software-and-systems/craft/crafty-hacks#section-1). Like many long-time Emacs users, I've use some custom code, some of which I wouldn't do without. Here's a few items that I particularly like, and think might be useful to others - I hope to include more, as time allows.
+I've been using Gnu Emacs since it was publicly available (1985?), and have contributed some packages which are included with Emacs, notably the [Allout outliner](http://myriadicity.net/software-and-systems/craft/emacs-allout), [icomplete mode](http://www.emacswiki.org/emacs/IcompleteMode), and python-mode's [pdbtrack functionality](http://myriadicity.net/software-and-systems/craft/crafty-hacks#section-1). Like many long-time Emacs users, I have a bunch of custom code, some that's crucial. Here's sometha that you might find useful. I hope to include more, as time allows.
 
 * **[multishell.el](./multishell.el)**
 
