@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.0.3
+;; Version: 1.0.4
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsUtils
@@ -11,8 +11,8 @@
 ;;; Commentary:
 ;;
 ;; Easily use and manage multiple shell buffers, including remote shells.
-;; Fundamentally, multishell is the function `multishell-pop-to-shell - like
-;; pop-to-buffer - plus a keybinding. Together, they enable you to:
+;; Fundamentally, multishell is the function `multishell-pop-to-shell' -
+;; a la `pop-to-buffer' - plus a keybinding. Together, they enable you to:
 ;;
 ;; * Get to the input point from wherever you are in a shell buffer,
 ;; * ... or to a shell buffer if you're not currently in one.
@@ -53,8 +53,6 @@
 
 ;;; Code:
 
-(defvar non-interactive-process-buffers '("*compilation*" "*grep*"))
-
 (require 'comint)
 (require 'shell)
 
@@ -65,12 +63,6 @@ Customize `allout-widgets-auto-activation' to activate allout-widgets
 with allout-mode."
   :group 'shell)
 
-(defcustom multishell-non-interactive-process-buffers
-  '("*compilation*" "*grep*")
-  "Names of buffers that have processes but are not for interaction.
-Identify which buffers you don't want to be multishell-pop-to-shell \"sticky\"."
-  :type '(repeat string)
-  :group 'multishell)
 (defcustom multishell-command-key "\M- "
   "The key to use if `multishell-activate-command-key' is true.
 
@@ -158,9 +150,8 @@ Customize-group `multishell' to set up a key binding and tweak behaviors.
 
 ==== Basic operation:
 
- - If the current buffer is associated with a subprocess (that is
-   not among those named on `non-interactive-process-buffers'),
-   then focus is moved to the process input point.
+ - If the current buffer is shell-mode (or shell-mode derived)
+   buffer then focus is moved to the process input point.
 
    \(You can use a universal argument go to a different shell
    buffer when already in a buffer that has a process - see
@@ -233,7 +224,7 @@ For example:
   (interactive "P")
 
   (let* ((from-buffer (current-buffer))
-         (from-buffer-is-shell (eq major-mode 'shell-mode))
+         (from-buffer-is-shell (derived-mode-p 'shell-mode))
          (doublearg (equal arg '(16)))
          (target-name-and-path
           (multishell-derive-target-name-and-path
@@ -249,9 +240,7 @@ For example:
          (use-default-dir (cadr target-name-and-path))
          (target-shell-buffer-name (car target-name-and-path))
          (curr-buff-proc (get-buffer-process from-buffer))
-         (target-buffer (if (and (or curr-buff-proc from-buffer-is-shell)
-                                 (not (member (buffer-name from-buffer)
-                                              non-interactive-process-buffers)))
+         (target-buffer (if from-buffer-is-shell
                             from-buffer
                           (get-buffer target-shell-buffer-name)))
          inwin
@@ -333,7 +322,7 @@ on empty input."
                             (mapcar (lambda (buffer)
                                       (let ((name (buffer-name buffer)))
                                         (if (with-current-buffer buffer
-                                              (eq major-mode 'shell-mode))
+                                              (derived-mode-p 'shell-mode))
                                             ;; Shell mode buffers.
                                             (if (> (length name) 2)
                                                 ;; Strip asterisks.
@@ -416,7 +405,7 @@ Return them as a list (name dir), with dir nil if none given."
     (if (and path (not (string= path "")))
         (setq default-directory path))
     (when (and (file-remote-p default-directory)
-               (eq major-mode 'shell-mode)
+               (derived-mode-p 'shell-mode)
                (not (comint-check-proc (current-buffer))))
       ;; We're returning to an already established but disconnected remote
       ;; shell, tidy it:
