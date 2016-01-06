@@ -32,20 +32,21 @@
 ;;
 ;;; TODO:
 ;;
-;; * Fix operation given local path without specified name
 ;; * Preserveable (savehist) history that associates names with paths
 ;;   - Using an association list between names and paths
 ;;   - Searched for search backwards/forwards on isearch-like M-r/M-s bindings
 ;;     - *Not* searched for regular completion
 ;;   - Editible
-;;     - During confirmation for new buffers - to use historical one
-;;     - Or with minibuffer setup created key binding (isearch-like) M-e
-;;       - M-e in empty initial provides completion on historicals
-;;     - User can edit the entire path, changing the association
+;;     - New shell prompts for confirmation
+;;       - Including path from history, if any
+;;       - which offers opportunity to edit association
 ;;     - New association overrides previous
-;;     - Deleting path removes association and history entry
-;;   - Tracks buffer name changes
-;;     - Using buffer-list-update-hook
+;;   - History tracks buffer disposition
+;;     - Track buffer name change using buffer-list-update-hook
+;;     - Deleting buffer removes history entry!
+;;   - Option to track last directory - multishell-remember-last-dir
+;;     - Include note about tramp not tracking remote dirs well
+;;       - use `M-x shell-resync-dirs'; I bind to M-return
 ;; * Customize activation of savehist
 ;;   - Customize entry has warning about activating savehist
 ;;   - Adds the name/path association list to savehist-additional-variables
