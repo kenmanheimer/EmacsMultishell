@@ -3,14 +3,14 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.0.4
+;; Version: 1.0.5
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsUtils
 ;;
 ;;; Commentary:
 ;;
-;; Easily use and manage multiple shell buffers, including remote shells.
+;; Easily use and navigate multiple shell buffers, including remote shells.
 ;; Fundamentally, multishell is the function `multishell-pop-to-shell' -
 ;; a la `pop-to-buffer' - plus a keybinding. Together, they enable you to:
 ;;
@@ -125,7 +125,8 @@ current-buffer behavior.)"
 ;;   "Remember shell name/path associations across sessions. Note well:
 ;; This will activate minibuffer history persistence, in general, if it's not
 ;; already active."
-;;   :type 'boolean
+;;  :type 'boolean
+;;  :set 'multishell-activate-persistence
 ;;  :group 'shell)
 
 (defvar multishell-name-path-assoc nil
@@ -135,9 +136,23 @@ current-buffer behavior.)"
   "Shell name to use for un-modified multishell-pop-to-shell buffer target.")
 (defvar multishell-buffer-name-history nil
   "Distinct multishell-pop-to-shell completion history container.")
-(defvar multishell-buffer-name-path-history nil
-  "Another multishell-pop-to-shell completion history container,
-including paths.")
+(defvar multishell-names-to-paths nil
+  "Multishell buffer name/path associations.")
+(defun multishell-register-buffer-name (name path)
+  "Associate NAME with PATH in `multishell-names-to-path'.
+
+Remove registration for NAME if PATH is nil (but not the empty string)."
+  (if path
+      (let* ((it (cons name path))
+             (got (member it multishell-buffer-name_path-history)))
+        (if got
+            (setcdr it path)
+          (setq multishell-buffer-name_path-history
+                (cons (cons name path) multishell-buffer-name_path-history))))
+    (let ((it (assoc name multishell-buffer-name_path-history)))
+      (if it
+          (setq multishell-buffer-name_path-history
+                (delete it multishell-buffer-name_path-history))))))
 
 (defun multishell-pop-to-shell (&optional arg)
   "Easily navigate to and within multiple shell buffers, local and remote.
