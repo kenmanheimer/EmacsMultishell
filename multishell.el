@@ -129,8 +129,8 @@ current-buffer behavior.)"
 ;;  :set 'multishell-activate-persistence
 ;;  :group 'shell)
 
-(defvar multishell-name-path-assoc nil
-  "Assoc list from name to path")
+(defvar multishell-name-to-path-history nil
+  "Associations from shell buffer names to their default paths")
 
 (defvar multishell-primary-name "*shell*"
   "Shell name to use for un-modified multishell-pop-to-shell buffer target.")
@@ -138,21 +138,21 @@ current-buffer behavior.)"
   "Distinct multishell-pop-to-shell completion history container.")
 (defvar multishell-names-to-paths nil
   "Multishell buffer name/path associations.")
-(defun multishell-register-buffer-name (name path)
-  "Associate NAME with PATH in `multishell-names-to-path'.
+(defun multishell-register-name-to-path (name path)
+  "Associate NAME with PATH in `multishell-name-to-path-history'.
 
 Remove registration for NAME if PATH is nil (but not the empty string)."
   (if path
       (let* ((it (cons name path))
-             (got (member it multishell-buffer-name_path-history)))
+             (got (member it multishell-name-to-path-history)))
         (if got
             (setcdr it path)
-          (setq multishell-buffer-name_path-history
-                (cons (cons name path) multishell-buffer-name_path-history))))
-    (let ((it (assoc name multishell-buffer-name_path-history)))
+          (setq multishell-name-to-path-history
+                (cons (cons name path) multishell-name-to-path-history))))
+    (let ((it (assoc name multishell-name-to-path-history)))
       (if it
-          (setq multishell-buffer-name_path-history
-                (delete it multishell-buffer-name_path-history))))))
+          (setq multishell-name-to-path-history
+                (delete it multishell-name-to-path-history))))))
 
 (defun multishell-pop-to-shell (&optional arg)
   "Easily navigate to and within multiple shell buffers, local and remote.
@@ -232,7 +232,7 @@ For example:
 ;; shell buffer names and paths across emacs sessions. To do so,
 ;; customize the `savehist' group, and:
 
-;; 1. Add `multishell-pop-to-shell-buffer-name-history' to Savehist Additional
+;; 1. Add `multishell-name-to-path-history' to Savehist Additional
 ;;    Variables.
 ;; 2. Activate Savehist Mode, if not already activated.
 ;; 3. Save.
@@ -308,6 +308,7 @@ For example:
     (let ((process (get-buffer-process (current-buffer))))
       (if (and process (equal 'stop (process-status process)))
           (continue-process process)))
+    (multishell-register-name-to-path target-shell-buffer-name use-default-dir)
     (when (or already-there
              (equal (current-buffer) from-buffer))
       (goto-char (point-max))
@@ -333,25 +334,36 @@ For example:
 
 Return the supplied name bracketed with the asterisks, or specified DEFAULT
 on empty input."
-  (let* ((candidates (append
-                      (remq nil
-                            (mapcar (lambda (buffer)
-                                      (let ((name (buffer-name buffer)))
-                                        (if (with-current-buffer buffer
-                                              (derived-mode-p 'shell-mode))
-                                            ;; Shell mode buffers.
-                                            (if (> (length name) 2)
-                                                ;; Strip asterisks.
-                                                (substring name 1
-                                                           (1- (length name)))
-                                              name))))
-                                    (buffer-list)))))
+  (let* ((candidates
+          (append
+           (remq nil
+                 (mapcar (lambda (buffer)
+                           (let* ((name (buffer-name buffer))
+                                  (ntph multishell-name-to-path-history)
+                                  (path (cdr (assoc name ntph))))
+                             (when (with-current-buffer buffer
+                                   (derived-mode-p 'shell-mode))
+                               ;; Shell mode buffers.
+                               (setq name (if (> (length name) 2)
+                                              ;; Strip asterisks.
+                                              (substring name 1
+                                                         (1- (length name)))
+                                            name))
+                               (if path
+                                   (concat name path)
+                                 name))))
+                         (buffer-list)))))
          (got (completing-read prompt
-                               candidates ; COLLECTION
-                               nil        ; PREDICATE
-                               'confirm   ; REQUIRE-MATCH
-                               nil        ; INITIAL-INPUT
-                               'multishell-buffer-name-history ; HIST
+                               ;; COLLECTION:
+                               candidates
+                               ;; PREDICATE:
+                               nil
+                               ;; REQUIRE-MATCH:
+                               'confirm
+                               ;; INITIAL-INPUT:
+                               nil
+                               ;; HIST:
+                               'multishell-buffer-name-history
                                )))
     (if (not (string= got "")) (multishell-bracket-asterisks got) default)))
 (defun multishell-derive-target-name-and-path (path-ish)
