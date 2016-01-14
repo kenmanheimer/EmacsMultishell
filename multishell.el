@@ -143,16 +143,18 @@ current-buffer behavior.)"
 
 Remove registration for NAME if PATH is nil (but not the empty string)."
   (if path
-      (let* ((it (cons name path))
-             (got (member it multishell-name-to-path-history)))
-        (if got
-            (setcdr it path)
-          (setq multishell-name-to-path-history
-                (cons (cons name path) multishell-name-to-path-history))))
-    (let ((it (assoc name multishell-name-to-path-history)))
-      (if it
-          (setq multishell-name-to-path-history
-                (delete it multishell-name-to-path-history))))))
+      (let* ((got (assoc name multishell-name-to-path-history)))
+        (cond ((or (not path)(string= path ""))
+               ;; Remove entry, if present:
+               (if got
+                   (setq multishell-name-to-path-history
+                         (delete got multishell-name-to-path-history))))
+              (got
+               ;; Replace the path of the existing entry:
+               (setcdr got path))
+              ;; Add a new entry:
+              (t (setq multishell-name-to-path-history
+                (cons (cons name path) multishell-name-to-path-history)))))))
 
 (defun multishell-pop-to-shell (&optional arg)
   "Easily navigate to and within multiple shell buffers, local and remote.
@@ -308,7 +310,8 @@ For example:
     (let ((process (get-buffer-process (current-buffer))))
       (if (and process (equal 'stop (process-status process)))
           (continue-process process)))
-    (multishell-register-name-to-path target-shell-buffer-name use-default-dir)
+    (multishell-register-name-to-path target-shell-buffer-name
+                                      use-default-dir)
     (when (or already-there
              (equal (current-buffer) from-buffer))
       (goto-char (point-max))
@@ -334,25 +337,29 @@ For example:
 
 Return the supplied name bracketed with the asterisks, or specified DEFAULT
 on empty input."
-  (let* ((candidates
+  (let* ((ntph multishell-name-to-path-history)
+         (candidates
           (append
            (remq nil
                  (mapcar (lambda (buffer)
                            (let* ((name (buffer-name buffer))
-                                  (ntph multishell-name-to-path-history)
-                                  (path (cdr (assoc name ntph))))
+                                  (already (assoc name ntph)))
                              (when (with-current-buffer buffer
-                                   (derived-mode-p 'shell-mode))
+                                     (derived-mode-p 'shell-mode))
                                ;; Shell mode buffers.
                                (setq name (if (> (length name) 2)
                                               ;; Strip asterisks.
                                               (substring name 1
                                                          (1- (length name)))
                                             name))
-                               (if path
-                                   (concat name path)
+                               (if already
+                                   nil
                                  name))))
-                         (buffer-list)))))
+                         (buffer-list)))
+           (mapcar #'(lambda (assoc)
+                      (concat (multishell-unbracket-asterisks (car assoc))
+                              (cdr assoc)))
+                   multishell-name-to-path-history)))
          (got (completing-read prompt
                                ;; COLLECTION:
                                candidates
