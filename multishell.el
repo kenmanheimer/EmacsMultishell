@@ -40,6 +40,8 @@
 ;;     - New shell prompts for confirmation
 ;;       - Including path from history, if any
 ;;       - which offers opportunity to edit association
+;;       - completions list toggles between short and long
+;;         - "Toggle to long listing by immediately provoking completions again"
 ;;     - New association overrides previous
 ;;   - History tracks buffer disposition
 ;;     - Track buffer name change using buffer-list-update-hook
@@ -134,27 +136,35 @@ current-buffer behavior.)"
 
 (defvar multishell-primary-name "*shell*"
   "Shell name to use for un-modified multishell-pop-to-shell buffer target.")
-(defvar multishell-buffer-name-history nil
-  "Distinct multishell-pop-to-shell completion history container.")
 (defvar multishell-names-to-paths nil
   "Multishell buffer name/path associations.")
 (defun multishell-register-name-to-path (name path)
   "Associate NAME with PATH in `multishell-name-to-path-history'.
 
-Remove registration for NAME if PATH is nil (but not the empty string)."
-  (if path
-      (let* ((got (assoc name multishell-name-to-path-history)))
-        (cond ((or (not path)(string= path ""))
-               ;; Remove entry, if present:
-               (if got
-                   (setq multishell-name-to-path-history
-                         (delete got multishell-name-to-path-history))))
-              (got
-               ;; Replace the path of the existing entry:
-               (setcdr got path))
-              ;; Add a new entry:
-              (t (setq multishell-name-to-path-history
-                (cons (cons name path) multishell-name-to-path-history)))))))
+Remove registration for NAME if PATH is nil (but not the empty string).
+
+Return a list of the prior entry and current one, to indicate
+disposition changes."
+  (let* ((got (assoc name multishell-name-to-path-history))
+         becomes
+         (return (list got becomes)))
+    (cond ((or (not path)(string= path ""))
+           ;; Remove entry, if present:
+           (if got
+               (setq multishell-name-to-path-history
+                     (delete got multishell-name-to-path-history))))
+          (got
+           ;; Replace the path of the existing entry, and move to the front:
+           (setq becomes (cons (car got) path)
+                 multishell-name-to-path-history
+                 (cons becomes (remove got multishell-name-to-path-history)))
+           (setq return (list got becomes)))
+          ;; Add a new entry, at the front:
+          (t (setq becomes (cons name path)
+                   return (list got becomes)
+                   multishell-name-to-path-history
+                   (cons becomes multishell-name-to-path-history))))
+    return))
 
 (defun multishell-pop-to-shell (&optional arg)
   "Easily navigate to and within multiple shell buffers, local and remote.
@@ -310,7 +320,8 @@ For example:
     (let ((process (get-buffer-process (current-buffer))))
       (if (and process (equal 'stop (process-status process)))
           (continue-process process)))
-    (multishell-register-name-to-path target-shell-buffer-name
+    (multishell-register-name-to-path (multishell-unbracket-asterisks
+                                       target-shell-buffer-name)
                                       use-default-dir)
     (when (or already-there
              (equal (current-buffer) from-buffer))
@@ -340,22 +351,18 @@ on empty input."
   (let* ((ntph multishell-name-to-path-history)
          (candidates
           (append
+           ;; Plain shell buffer names appended with names from name/path hist:
            (remq nil
                  (mapcar (lambda (buffer)
-                           (let* ((name (buffer-name buffer))
+                           (let* ((name (multishell-unbracket-asterisks
+                                         (buffer-name buffer)))
                                   (already
-                                   (assoc (multishell-unbracket-asterisks name)
-                                          ntph)))
-                             (if already
-                                 nil
-                               (when (with-current-buffer buffer
-                                       (derived-mode-p 'shell-mode))
-                                 ;; Shell mode buffers.
-                                 (setq name (if (> (length name) 2)
-                                                ;; Strip asterisks.
-                                                (substring name 1
-                                                           (1- (length name)))
-                                              name))))))
+                                   (assoc name ntph)))
+                             (and (not already)
+                                  (with-current-buffer buffer
+                                    ;; Shell mode buffers.
+                                    (derived-mode-p 'shell-mode))
+                                  name)))
                          (buffer-list)))
            (mapcar #'(lambda (assoc)
                       (concat (car assoc) (cdr assoc)))
@@ -367,12 +374,12 @@ on empty input."
                                nil
                                ;; REQUIRE-MATCH:
                                'confirm
-                               ;; INITIAL-INPUT:
-                               nil
-                               ;; HIST:
-                               'multishell-buffer-name-history
-                               )))
-    (if (not (string= got "")) (multishell-bracket-asterisks got) default)))
+                               ;; INITIAL-INPUT ;; HIST:
+                               nil nil)))
+    (if (not (string= got ""))
+        (multishell-bracket-asterisks got)
+      default)))
+
 (defun multishell-derive-target-name-and-path (path-ish)
   "Give tramp-style PATH-ISH, determine target name and default directory.
 
