@@ -343,22 +343,22 @@ on empty input."
            (remq nil
                  (mapcar (lambda (buffer)
                            (let* ((name (buffer-name buffer))
-                                  (already (assoc name ntph)))
-                             (when (with-current-buffer buffer
-                                     (derived-mode-p 'shell-mode))
-                               ;; Shell mode buffers.
-                               (setq name (if (> (length name) 2)
-                                              ;; Strip asterisks.
-                                              (substring name 1
-                                                         (1- (length name)))
-                                            name))
-                               (if already
-                                   nil
-                                 name))))
+                                  (already
+                                   (assoc (multishell-unbracket-asterisks name)
+                                          ntph)))
+                             (if already
+                                 nil
+                               (when (with-current-buffer buffer
+                                       (derived-mode-p 'shell-mode))
+                                 ;; Shell mode buffers.
+                                 (setq name (if (> (length name) 2)
+                                                ;; Strip asterisks.
+                                                (substring name 1
+                                                           (1- (length name)))
+                                              name))))))
                          (buffer-list)))
            (mapcar #'(lambda (assoc)
-                      (concat (multishell-unbracket-asterisks (car assoc))
-                              (cdr assoc)))
+                      (concat (car assoc) (cdr assoc)))
                    multishell-name-to-path-history)))
          (got (completing-read prompt
                                ;; COLLECTION:
