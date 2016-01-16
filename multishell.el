@@ -216,10 +216,10 @@ the buffer name. Otherwise, the host, domain, or path is used.
 
 For example:
 
-* Use '/ssh:example.net:/' for a shell buffer on example.net named
-  \"example.net\".
-* '\#ex/ssh:example.net|sudo:root@example.net:/' for a root shell on 
-  example.net named \"#ex\".
+* Use '/ssh:example.net:' for a shell buffer in your homedir on
+  example.net; the buffer will be named \"example.net\".
+* '\#ex/ssh:example.net|sudo:root@example.net:/etc' for a root shell 
+  in /etc on example.net named \"#ex\".
 
 You can change the startup path for a shell buffer by editing it
 at the completion prompt. The new path will be preserved in
@@ -399,15 +399,12 @@ besides the string before the initial '/' slash.
 Return them as a list (name dir), with dir nil if none given."
   (let (name (path "") dir)
     (cond ((string= path-ish "") (setq dir multishell-primary-name))
-          ((string-match "^\\*\\([^/]*\\)\\(/.*/\\)\\(.*\\)\\*" path-ish)
+          ((string-match "^\\*\\([^/]*\\)\\(/.*\\)\\*" path-ish)
            ;; We have a path, use it
-           (let ((overt-name (match-string 1 path-ish))
-                 (overt-path (match-string 2 path-ish))
-                 (trailing-name (match-string 3 path-ish)))
+           (let ((overt-name (match-string 1 path-ish)))
+             (setq path (match-string 2 path-ish))
              (if (string= overt-name "") (setq overt-name nil))
-             (if (string= overt-path "") (setq overt-path nil))
-             (if (string= trailing-name "") (setq trailing-name nil))
-             (setq path (concat overt-path trailing-name))
+             (if (string= path "") (setq path nil))
              (setq name
                    (multishell-bracket-asterisks
                     (or overt-name
@@ -416,7 +413,6 @@ Return them as a list (name dir), with dir nil if none given."
                               (or (tramp-file-name-host vec)
                                   (tramp-file-name-domain vec)
                                   (tramp-file-name-localname vec)
-                                  trailing-name
                                   system-name))
                           (multishell-unbracket-asterisks
                            multishell-primary-name)))))))
