@@ -131,40 +131,31 @@ current-buffer behavior.)"
 ;;  :set 'multishell-activate-persistence
 ;;  :group 'shell)
 
-(defvar multishell-name-to-path-history nil
-  "Associations from shell buffer names to their default paths")
+(defvar multishell-history nil
+  "Name/path entries, most recent first.")
 
 (defvar multishell-primary-name "*shell*"
   "Shell name to use for un-modified multishell-pop-to-shell buffer target.")
-(defvar multishell-names-to-paths nil
-  "Multishell buffer name/path associations.")
-(defun multishell-register-name-to-path (name path)
-  "Associate NAME with PATH in `multishell-name-to-path-history'.
 
-Remove registration for NAME if PATH is nil (but not the empty string).
+(defun multishell-register-name-to-path (name path)
+  "Add or replace entry associating NAME with PATH in `multishell-history'.
 
 Return a list of the prior entry and current one, to indicate
 disposition changes."
-  (let* ((got (assoc name multishell-name-to-path-history))
-         becomes
-         (return (list got becomes)))
-    (cond ((or (not path)(string= path ""))
-           ;; Remove entry, if present:
-           (if got
-               (setq multishell-name-to-path-history
-                     (delete got multishell-name-to-path-history))))
-          (got
-           ;; Replace the path of the existing entry, and move to the front:
-           (setq becomes (cons (car got) path)
-                 multishell-name-to-path-history
-                 (cons becomes (remove got multishell-name-to-path-history)))
-           (setq return (list got becomes)))
-          ;; Add a new entry, at the front:
-          (t (setq becomes (cons name path)
-                   return (list got becomes)
-                   multishell-name-to-path-history
-                   (cons becomes multishell-name-to-path-history))))
-    return))
+  (let* ((entry (multishell-name-entry name))
+         (becomes (concat name path)))
+    ;; Promote to the front, tracking path changes in the process:
+    (setq multishell-history (delete entry multishell-history))
+    (if (string= path "")
+        (push entry multishell-history)
+      (push becomes multishell-history))))
+
+(defun multishell-name-entry (name)
+  "Return `multishell-history' entry that starts with NAME, or nil if none."
+  (let ((match-expr (concat "^" name "\\\(/.*$\\\)?")))
+    (dolist (entry multishell-history)
+      (when (string-match match-expr entry)
+        (return entry)))))
 
 (defun multishell-pop-to-shell (&optional arg)
   "Easily navigate to and within multiple shell buffers, local and remote.
@@ -348,34 +339,31 @@ For example:
 
 Return the supplied name bracketed with the asterisks, or specified DEFAULT
 on empty input."
-  (let* ((ntph multishell-name-to-path-history)
-         (candidates
+  (let* ((candidates
           (append
            ;; Plain shell buffer names appended with names from name/path hist:
            (remq nil
                  (mapcar (lambda (buffer)
                            (let* ((name (multishell-unbracket-asterisks
-                                         (buffer-name buffer)))
-                                  (already
-                                   (assoc name ntph)))
-                             (and (not already)
-                                  (with-current-buffer buffer
+                                         (buffer-name buffer))))
+                             (and (with-current-buffer buffer
                                     ;; Shell mode buffers.
                                     (derived-mode-p 'shell-mode))
+                                  (not (multishell-name-entry name))
                                   name)))
                          (buffer-list)))
-           (mapcar #'(lambda (assoc)
-                      (concat (car assoc) (cdr assoc)))
-                   multishell-name-to-path-history)))
+           multishell-history))
          (got (completing-read prompt
                                ;; COLLECTION:
-                               candidates
+                               (reverse candidates)
                                ;; PREDICATE:
                                nil
                                ;; REQUIRE-MATCH:
                                'confirm
-                               ;; INITIAL-INPUT ;; HIST:
-                               nil nil)))
+                               ;; INITIAL-INPUT
+                               nil
+                               ;; HIST:
+                               'multishell-history)))
     (if (not (string= got ""))
         (multishell-bracket-asterisks got)
       default)))
