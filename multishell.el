@@ -33,26 +33,20 @@
 ;;; TODO:
 ;;
 ;; * Preserveable (savehist) history that associates names with paths
-;;   - Using an association list between names and paths
-;;   - Searched for search backwards/forwards on isearch-like M-r/M-s bindings
-;;     - *Not* searched for regular completion
 ;;   - Editible
 ;;     - New shell prompts for confirmation
 ;;       - Including path from history, if any
-;;       - which offers opportunity to edit association
-;;       - completions list toggles between short and long
-;;         - "Toggle to long listing by immediately provoking completions again"
-;;     - New association overrides previous
+;;       - which offers opportunity to entry
+;;       - ?completions list toggles between short and long?
+;;         - "Toggle short/long listing by immediately repeating completion key"
 ;;   - History tracks buffer disposition
+;;     - Deleting buffer removes history entry
 ;;     - Track buffer name change using buffer-list-update-hook
-;;     - Deleting buffer removes history entry!
 ;;   - Option to track last directory - multishell-remember-last-dir
-;;     - Include note about tramp not tracking remote dirs well
+;;     - dig into tramp to find out where the actual remote+dir path is
+;;     - Include note about tramp not tracking remote dir changes well
 ;;       - use `M-x shell-resync-dirs'; I bind to M-return
-;; * Customize activation of savehist
-;;   - Customize entry has warning about activating savehist
-;;   - Adds the name/path association list to savehist-additional-variables
-;;   - Activates savehist, if inactive
+;; * Note in multishell doc to activate (customize) savehist to preserve history
 
 ;;; Code:
 
@@ -223,22 +217,19 @@ For example:
 * Use '/ssh:example.net:/' for a shell buffer on example.net named
   \"example.net\".
 * '\#ex/ssh:example.net|sudo:root@example.net:/' for a root shell on 
-  example.net named \"#ex\"."
+  example.net named \"#ex\".
 
-;; I'm leaving the following out of the docstring for now because just
-;; saving the buffer names, and not the paths, yields sometimes unwanted
-;; behavior.
+You can change the startup path for a shell buffer by editing it
+at the completion prompt. The new path will be preserved in
+history but will not take effect for an already-running shell.
 
-;; ===== Persisting your alternate shell buffer names and paths:
+To remove a shell buffer's history entry, kill the buffer and
+affirm removal of the entry when prompted.
 
-;; You can use emacs builtin SaveHist to preserve your alternate
-;; shell buffer names and paths across emacs sessions. To do so,
-;; customize the `savehist' group, and:
+===== Activate savehist to persisting your shell buffer names and paths:
 
-;; 1. Add `multishell-name-to-path-history' to Savehist Additional
-;;    Variables.
-;; 2. Activate Savehist Mode, if not already activated.
-;; 3. Save.
+To have emacs maintain your history of shell buffer names and paths, 
+customize the savehist group to activate savehist."
 
   (interactive "P")
 
@@ -319,6 +310,33 @@ For example:
       (goto-char (point-max))
       (and (get-buffer-process from-buffer)
            (goto-char (process-mark (get-buffer-process from-buffer)))))))
+
+(defun multishell-kill-buffer-query-function ()
+  "Offer to remove multishell-history entry for buffer."
+  ;; Removal choice is crucial, so users can, eg, kill and a runaway shell
+  ;; and keep the history entry to easily restart it.
+  ;;
+  ;; We use kill-buffer-query-functions instead of kill-buffer-hook because:
+  ;;
+  ;; 1. It enables the user to remove the history without killing the buffer,
+  ;;    by cancelling the kill-buffer process after affirming history removal.
+  ;; 2. kill-buffer-hooks often fails to run when killing shell buffers!
+  ;;    I've failed to resolve that, and like the first reason well enough.
+
+  ;; (Use condition-case to avoid inadvertant disruption of kill-buffer
+  ;; activity.  kill-buffer happens behind the scenes a whole lot.)
+  (condition-case anyerr
+      (let ((entry (and (derived-mode-p 'shell-mode)
+                        (multishell-name-entry (multishell-unbracket-asterisks
+                                                (buffer-name))))))
+        (when (and entry
+                   (y-or-n-p (format "Remove multishell history entry `%s'? "
+                                     entry)))
+          (setq multishell-history
+                (delete entry multishell-history))))
+    (error nil))
+  t)
+(add-hook 'kill-buffer-query-functions 'multishell-kill-buffer-query-function)
 
 (defun multishell-get-visible-window-for-buffer (buffer)
   "Return visible window containing buffer."
