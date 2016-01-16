@@ -15,38 +15,41 @@
 ;; a la `pop-to-buffer' - plus a keybinding. Together, they enable you to:
 ;;
 ;; * Get to the input point from wherever you are in a shell buffer,
-;; * ... or to a shell buffer if you're not currently in one.
+;; * ... or to one of your shell buffers if you're not currently in one,
+;; * ... with just a keystroke.
 ;; * Use universal arguments to launch and choose among alternate shell buffers,
 ;; * ... and select which is default.
 ;; * Append a path to a new shell name to launch a shell in that directory,
 ;; * ... and use a path with Emacs tramp syntax to launch a remote shell.
 ;;
-;; Customize-group `multishell` to select and activate a keybinding and set
-;; various behaviors.
+;;       For example: 
 ;;
-;; See the multishell-pop-to-shell docstring for details.
+;;       * '/ssh:example.net:' for a shell buffer in your homedir on
+;;         example.net; the buffer will be named "*example.net*".
+;;
+;;       * '#ex/ssh:example.net|sudo:root@example.net:/etc' for a root shell
+;;         starting in /etc on example.net named "*#ex*".
+;;
+;; Customize-group `multishell' to select and activate a keybinding and set
+;; various behaviors. Customize-group `savehist' to preserve buffer
+;; names/paths across emacs sessions.
+;;
+;; See the `multishell-pop-to-shell' docstring for details.
 ;;
 ;;; Change Log:
 ;;
+;; 2016-01-16 1.0.5 Ken Manheimer:
+;;   - Fix - recognize and respect tramp path syntax to start in home dir
+;;   - Offer to user to remove shell's history entry when buffer is killed
+;;   - Fix - prevent duplicate entries for same name but different paths
+;;   - Simplify history var name, migrate existing history from old name if any
+;; 2016-01-06 Ken Manheimer - Released
 ;; 2016-01-02 Ken Manheimer - working on this in public, but not yet released.
 ;;
 ;;; TODO:
 ;;
-;; * Preserveable (savehist) history that associates names with paths
-;;   - Editible
-;;     - New shell prompts for confirmation
-;;       - Including path from history, if any
-;;       - which offers opportunity to entry
-;;       - ?completions list toggles between short and long?
-;;         - "Toggle short/long listing by immediately repeating completion key"
-;;   - History tracks buffer disposition
-;;     - Deleting buffer removes history entry
-;;     - Track buffer name change using buffer-list-update-hook
-;;   - Option to track last directory - multishell-remember-last-dir
-;;     - dig into tramp to find out where the actual remote+dir path is
-;;     - Include note about tramp not tracking remote dir changes well
-;;       - use `M-x shell-resync-dirs'; I bind to M-return
-;; * Note in multishell doc to activate (customize) savehist to preserve history
+;; * Track the current directory in each buffer's history entry.
+;; * Provide toggle to see completions buffer with just buffer names or + paths
 
 ;;; Code:
 
@@ -151,7 +154,8 @@ current-buffer behavior.)"
   (let ((match-expr (concat "^" name "\\\(/.*$\\\)?"))
         got)
     (dolist (entry multishell-history)
-      (when (string-match match-expr entry)
+      (when (and (string-match match-expr entry)
+                 (not (member entry got)))
         (setq got (cons entry got))))
     got))
 
@@ -219,9 +223,9 @@ the buffer name. Otherwise, the host, domain, or path is used.
 For example:
 
 * Use '/ssh:example.net:' for a shell buffer in your homedir on
-  example.net; the buffer will be named \"example.net\".
+  example.net; the buffer will be named \"*example.net*\".
 * '\#ex/ssh:example.net|sudo:root@example.net:/etc' for a root shell 
-  in /etc on example.net named \"#ex\".
+  in /etc on example.net named \"*#ex*\".
 
 You can change the startup path for a shell buffer by editing it
 at the completion prompt. The new path will be preserved in
