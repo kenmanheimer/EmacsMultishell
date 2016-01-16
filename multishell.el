@@ -449,11 +449,13 @@ Return them as a list (name dir), with dir nil if none given."
                    "/bin/sh"))
          (name (file-name-nondirectory prog))
          (startfile (concat "~/.emacs_" name))
-         (xargs-name (intern-soft (concat "explicit-" name "-args"))))
+         (xargs-name (intern-soft (concat "explicit-" name "-args")))
+         is-remote)
     (set-buffer buffer-name)
     (if (and path (not (string= path "")))
         (setq default-directory path))
-    (when (and (file-remote-p default-directory)
+    (setq is-remote (file-remote-p default-directory))
+    (when (and is-remote
                (derived-mode-p 'shell-mode)
                (not (comint-check-proc (current-buffer))))
       ;; We're returning to an already established but disconnected remote
@@ -461,7 +463,9 @@ Return them as a list (name dir), with dir nil if none given."
       (tramp-cleanup-connection
        (tramp-dissect-file-name default-directory 'noexpand)
        'keep-debug 'keep-password))
-    ;; (cd default-directory) will reconnect a disconnected remote:
+    ;; (cd default-directory) will connect if remote:
+    (when is-remote
+      (message "Connecting to %s" default-directory))
     (cd default-directory)
     (setq buffer (set-buffer (apply 'make-comint
                                     (multishell-unbracket-asterisks buffer-name)
