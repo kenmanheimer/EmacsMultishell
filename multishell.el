@@ -330,14 +330,15 @@ customize the savehist group to activate savehist."
   ;; (Use condition-case to avoid inadvertant disruption of kill-buffer
   ;; activity.  kill-buffer happens behind the scenes a whole lot.)
   (condition-case anyerr
-      (let ((entry (and (derived-mode-p 'shell-mode)
-                        (multishell-history-entries
-                         (multishell-unbracket-asterisks (buffer-name))))))
-        (when (and entry
-                   (y-or-n-p (format "Remove multishell history entry `%s'? "
-                                     entry)))
-          (setq multishell-history
-                (delete entry multishell-history))))
+      (let ((entries (and (derived-mode-p 'shell-mode)
+                          (multishell-history-entries
+                           (multishell-unbracket-asterisks (buffer-name))))))
+        (dolist (entry entries)
+          (when (and entry
+                     (y-or-n-p (format "Remove multishell history entry `%s'? "
+                                       entry)))
+            (setq multishell-history
+                  (delete entry multishell-history)))))
     (error nil))
   t)
 (add-hook 'kill-buffer-query-functions 'multishell-kill-buffer-query-function)
