@@ -140,18 +140,20 @@ current-buffer behavior.)"
 (defun multishell-register-name-to-path (name path)
   "Add or replace entry associating NAME with PATH in `multishell-history'."
   ;; Add or promote to the front, tracking path changes in the process.
-  (let* ((entry (multishell-history-entry name))
+  (let* ((entries (multishell-history-entries name))
          (becomes (concat name path)))
-    (when entry
+    (dolist (entry entries)
       (setq multishell-history (delete entry multishell-history)))
-    (push becomes multishell-history)))
+    (setq multishell-history (push becomes multishell-history))))
 
-(defun multishell-history-entry (name)
+(defun multishell-history-entries (name)
   "Return `multishell-history' entry that starts with NAME, or nil if none."
-  (let ((match-expr (concat "^" name "\\\(/.*$\\\)?")))
+  (let ((match-expr (concat "^" name "\\\(/.*$\\\)?"))
+        got)
     (dolist (entry multishell-history)
       (when (string-match match-expr entry)
-        (return entry)))))
+        (setq got (cons entry got))))
+    got))
 
 (defun multishell-pop-to-shell (&optional arg)
   "Easily navigate to and within multiple shell buffers, local and remote.
@@ -329,7 +331,7 @@ customize the savehist group to activate savehist."
   ;; activity.  kill-buffer happens behind the scenes a whole lot.)
   (condition-case anyerr
       (let ((entry (and (derived-mode-p 'shell-mode)
-                        (multishell-history-entry
+                        (multishell-history-entries
                          (multishell-unbracket-asterisks (buffer-name))))))
         (when (and entry
                    (y-or-n-p (format "Remove multishell history entry `%s'? "
@@ -369,7 +371,7 @@ on empty input."
                              (and (with-current-buffer buffer
                                     ;; Shell mode buffers.
                                     (derived-mode-p 'shell-mode))
-                                  (not (multishell-history-entry name))
+                                  (not (multishell-history-entries name))
                                   name)))
                          (buffer-list)))
            multishell-history))
