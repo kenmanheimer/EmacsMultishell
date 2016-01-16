@@ -3,14 +3,14 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.0.4
+;; Version: 1.0.5
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsUtils
 ;;
 ;;; Commentary:
 ;;
-;; Easily use and manage multiple shell buffers, including remote shells.
+;; Easily use and navigate multiple shell buffers, including remote shells.
 ;; Fundamentally, multishell is the function `multishell-pop-to-shell' -
 ;; a la `pop-to-buffer' - plus a keybinding. Together, they enable you to:
 ;;
@@ -32,24 +32,21 @@
 ;;
 ;;; TODO:
 ;;
-;; * Fix operation given local path without specified name
 ;; * Preserveable (savehist) history that associates names with paths
-;;   - Using an association list between names and paths
-;;   - Searched for search backwards/forwards on isearch-like M-r/M-s bindings
-;;     - *Not* searched for regular completion
 ;;   - Editible
-;;     - During confirmation for new buffers - to use historical one
-;;     - Or with minibuffer setup created key binding (isearch-like) M-e
-;;       - M-e in empty initial provides completion on historicals
-;;     - User can edit the entire path, changing the association
-;;     - New association overrides previous
-;;     - Deleting path removes association and history entry
-;;   - Tracks buffer name changes
-;;     - Using buffer-list-update-hook
-;; * Customize activation of savehist
-;;   - Customize entry has warning about activating savehist
-;;   - Adds the name/path association list to savehist-additional-variables
-;;   - Activates savehist, if inactive
+;;     - New shell prompts for confirmation
+;;       - Including path from history, if any
+;;       - which offers opportunity to entry
+;;       - ?completions list toggles between short and long?
+;;         - "Toggle short/long listing by immediately repeating completion key"
+;;   - History tracks buffer disposition
+;;     - Deleting buffer removes history entry
+;;     - Track buffer name change using buffer-list-update-hook
+;;   - Option to track last directory - multishell-remember-last-dir
+;;     - dig into tramp to find out where the actual remote+dir path is
+;;     - Include note about tramp not tracking remote dir changes well
+;;       - use `M-x shell-resync-dirs'; I bind to M-return
+;; * Note in multishell doc to activate (customize) savehist to preserve history
 
 ;;; Code:
 
@@ -124,19 +121,39 @@ current-buffer behavior.)"
 ;;   "Remember shell name/path associations across sessions. Note well:
 ;; This will activate minibuffer history persistence, in general, if it's not
 ;; already active."
-;;   :type 'boolean
+;;  :type 'boolean
+;;  :set 'multishell-activate-persistence
 ;;  :group 'shell)
 
-(defvar multishell-name-path-assoc nil
-  "Assoc list from name to path")
+(defvar multishell-history nil
+  "Name/path entries, most recent first.")
+(when (and (not multishell-history)
+           (boundp 'multishell-buffer-name-history)
+           multishell-buffer-name-history)
+  ;; Migrate few users who had old var to new.
+  (setq multishell-history multishell-buffer-name-history)
+ )
 
 (defvar multishell-primary-name "*shell*"
   "Shell name to use for un-modified multishell-pop-to-shell buffer target.")
-(defvar multishell-buffer-name-history nil
-  "Distinct multishell-pop-to-shell completion history container.")
-(defvar multishell-buffer-name-path-history nil
-  "Another multishell-pop-to-shell completion history container,
-including paths.")
+
+(defun multishell-register-name-to-path (name path)
+  "Add or replace entry associating NAME with PATH in `multishell-history'."
+  ;; Add or promote to the front, tracking path changes in the process.
+  (let* ((entries (multishell-history-entries name))
+         (becomes (concat name path)))
+    (dolist (entry entries)
+      (setq multishell-history (delete entry multishell-history)))
+    (setq multishell-history (push becomes multishell-history))))
+
+(defun multishell-history-entries (name)
+  "Return `multishell-history' entry that starts with NAME, or nil if none."
+  (let ((match-expr (concat "^" name "\\\(/.*$\\\)?"))
+        got)
+    (dolist (entry multishell-history)
+      (when (string-match match-expr entry)
+        (setq got (cons entry got))))
+    got))
 
 (defun multishell-pop-to-shell (&optional arg)
   "Easily navigate to and within multiple shell buffers, local and remote.
@@ -201,25 +218,22 @@ the buffer name. Otherwise, the host, domain, or path is used.
 
 For example:
 
-* Use '/ssh:example.net:/' for a shell buffer on example.net named
-  \"example.net\".
-* '\#ex/ssh:example.net|sudo:root@example.net:/' for a root shell on 
-  example.net named \"#ex\"."
+* Use '/ssh:example.net:' for a shell buffer in your homedir on
+  example.net; the buffer will be named \"example.net\".
+* '\#ex/ssh:example.net|sudo:root@example.net:/etc' for a root shell 
+  in /etc on example.net named \"#ex\".
 
-;; I'm leaving the following out of the docstring for now because just
-;; saving the buffer names, and not the paths, yields sometimes unwanted
-;; behavior.
+You can change the startup path for a shell buffer by editing it
+at the completion prompt. The new path will be preserved in
+history but will not take effect for an already-running shell.
 
-;; ===== Persisting your alternate shell buffer names and paths:
+To remove a shell buffer's history entry, kill the buffer and
+affirm removal of the entry when prompted.
 
-;; You can use emacs builtin SaveHist to preserve your alternate
-;; shell buffer names and paths across emacs sessions. To do so,
-;; customize the `savehist' group, and:
+===== Activate savehist to persisting your shell buffer names and paths:
 
-;; 1. Add `multishell-pop-to-shell-buffer-name-history' to Savehist Additional
-;;    Variables.
-;; 2. Activate Savehist Mode, if not already activated.
-;; 3. Save.
+To have emacs maintain your history of shell buffer names and paths, 
+customize the savehist group to activate savehist."
 
   (interactive "P")
 
@@ -292,11 +306,42 @@ For example:
     (let ((process (get-buffer-process (current-buffer))))
       (if (and process (equal 'stop (process-status process)))
           (continue-process process)))
+    (multishell-register-name-to-path (multishell-unbracket-asterisks
+                                       target-shell-buffer-name)
+                                      use-default-dir)
     (when (or already-there
              (equal (current-buffer) from-buffer))
       (goto-char (point-max))
       (and (get-buffer-process from-buffer)
            (goto-char (process-mark (get-buffer-process from-buffer)))))))
+
+(defun multishell-kill-buffer-query-function ()
+  "Offer to remove multishell-history entry for buffer."
+  ;; Removal choice is crucial, so users can, eg, kill and a runaway shell
+  ;; and keep the history entry to easily restart it.
+  ;;
+  ;; We use kill-buffer-query-functions instead of kill-buffer-hook because:
+  ;;
+  ;; 1. It enables the user to remove the history without killing the buffer,
+  ;;    by cancelling the kill-buffer process after affirming history removal.
+  ;; 2. kill-buffer-hooks often fails to run when killing shell buffers!
+  ;;    I've failed to resolve that, and like the first reason well enough.
+
+  ;; (Use condition-case to avoid inadvertant disruption of kill-buffer
+  ;; activity.  kill-buffer happens behind the scenes a whole lot.)
+  (condition-case anyerr
+      (let ((entries (and (derived-mode-p 'shell-mode)
+                          (multishell-history-entries
+                           (multishell-unbracket-asterisks (buffer-name))))))
+        (dolist (entry entries)
+          (when (and entry
+                     (y-or-n-p (format "Remove multishell history entry `%s'? "
+                                       entry)))
+            (setq multishell-history
+                  (delete entry multishell-history)))))
+    (error nil))
+  t)
+(add-hook 'kill-buffer-query-functions 'multishell-kill-buffer-query-function)
 
 (defun multishell-get-visible-window-for-buffer (buffer)
   "Return visible window containing buffer."
@@ -317,27 +362,35 @@ For example:
 
 Return the supplied name bracketed with the asterisks, or specified DEFAULT
 on empty input."
-  (let* ((candidates (append
-                      (remq nil
-                            (mapcar (lambda (buffer)
-                                      (let ((name (buffer-name buffer)))
-                                        (if (with-current-buffer buffer
-                                              (derived-mode-p 'shell-mode))
-                                            ;; Shell mode buffers.
-                                            (if (> (length name) 2)
-                                                ;; Strip asterisks.
-                                                (substring name 1
-                                                           (1- (length name)))
-                                              name))))
-                                    (buffer-list)))))
+  (let* ((candidates
+          (append
+           ;; Plain shell buffer names appended with names from name/path hist:
+           (remq nil
+                 (mapcar (lambda (buffer)
+                           (let* ((name (multishell-unbracket-asterisks
+                                         (buffer-name buffer))))
+                             (and (with-current-buffer buffer
+                                    ;; Shell mode buffers.
+                                    (derived-mode-p 'shell-mode))
+                                  (not (multishell-history-entries name))
+                                  name)))
+                         (buffer-list)))
+           multishell-history))
          (got (completing-read prompt
-                               candidates ; COLLECTION
-                               nil        ; PREDICATE
-                               'confirm   ; REQUIRE-MATCH
-                               nil        ; INITIAL-INPUT
-                               'multishell-buffer-name-history ; HIST
-                               )))
-    (if (not (string= got "")) (multishell-bracket-asterisks got) default)))
+                               ;; COLLECTION:
+                               (reverse candidates)
+                               ;; PREDICATE:
+                               nil
+                               ;; REQUIRE-MATCH:
+                               'confirm
+                               ;; INITIAL-INPUT
+                               nil
+                               ;; HIST:
+                               'multishell-history)))
+    (if (not (string= got ""))
+        (multishell-bracket-asterisks got)
+      default)))
+
 (defun multishell-derive-target-name-and-path (path-ish)
   "Give tramp-style PATH-ISH, determine target name and default directory.
 
@@ -349,15 +402,12 @@ besides the string before the initial '/' slash.
 Return them as a list (name dir), with dir nil if none given."
   (let (name (path "") dir)
     (cond ((string= path-ish "") (setq dir multishell-primary-name))
-          ((string-match "^\\*\\([^/]*\\)\\(/.*/\\)\\(.*\\)\\*" path-ish)
+          ((string-match "^\\*\\([^/]*\\)\\(/.*\\)\\*" path-ish)
            ;; We have a path, use it
-           (let ((overt-name (match-string 1 path-ish))
-                 (overt-path (match-string 2 path-ish))
-                 (trailing-name (match-string 3 path-ish)))
+           (let ((overt-name (match-string 1 path-ish)))
+             (setq path (match-string 2 path-ish))
              (if (string= overt-name "") (setq overt-name nil))
-             (if (string= overt-path "") (setq overt-path nil))
-             (if (string= trailing-name "") (setq trailing-name nil))
-             (setq path (concat overt-path trailing-name))
+             (if (string= path "") (setq path nil))
              (setq name
                    (multishell-bracket-asterisks
                     (or overt-name
@@ -366,7 +416,6 @@ Return them as a list (name dir), with dir nil if none given."
                               (or (tramp-file-name-host vec)
                                   (tramp-file-name-domain vec)
                                   (tramp-file-name-localname vec)
-                                  trailing-name
                                   system-name))
                           (multishell-unbracket-asterisks
                            multishell-primary-name)))))))
@@ -400,11 +449,13 @@ Return them as a list (name dir), with dir nil if none given."
                    "/bin/sh"))
          (name (file-name-nondirectory prog))
          (startfile (concat "~/.emacs_" name))
-         (xargs-name (intern-soft (concat "explicit-" name "-args"))))
+         (xargs-name (intern-soft (concat "explicit-" name "-args")))
+         is-remote)
     (set-buffer buffer-name)
     (if (and path (not (string= path "")))
         (setq default-directory path))
-    (when (and (file-remote-p default-directory)
+    (setq is-remote (file-remote-p default-directory))
+    (when (and is-remote
                (derived-mode-p 'shell-mode)
                (not (comint-check-proc (current-buffer))))
       ;; We're returning to an already established but disconnected remote
@@ -412,7 +463,9 @@ Return them as a list (name dir), with dir nil if none given."
       (tramp-cleanup-connection
        (tramp-dissect-file-name default-directory 'noexpand)
        'keep-debug 'keep-password))
-    ;; (cd default-directory) will reconnect a disconnected remote:
+    ;; (cd default-directory) will connect if remote:
+    (when is-remote
+      (message "Connecting to %s" default-directory))
     (cd default-directory)
     (setq buffer (set-buffer (apply 'make-comint
                                     (multishell-unbracket-asterisks buffer-name)
