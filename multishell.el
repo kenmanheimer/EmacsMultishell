@@ -127,24 +127,26 @@ current-buffer behavior.)"
 
 (defvar multishell-history nil
   "Name/path entries, most recent first.")
+(when (and (not multishell-history)
+           (boundp 'multishell-buffer-name-history)
+           multishell-buffer-name-history)
+  ;; Migrate few users who had old var to new.
+  (setq multishell-history multishell-buffer-name-history)
+ )
 
 (defvar multishell-primary-name "*shell*"
   "Shell name to use for un-modified multishell-pop-to-shell buffer target.")
 
 (defun multishell-register-name-to-path (name path)
-  "Add or replace entry associating NAME with PATH in `multishell-history'.
-
-Return a list of the prior entry and current one, to indicate
-disposition changes."
-  (let* ((entry (multishell-name-entry name))
+  "Add or replace entry associating NAME with PATH in `multishell-history'."
+  ;; Add or promote to the front, tracking path changes in the process.
+  (let* ((entry (multishell-history-entry name))
          (becomes (concat name path)))
-    ;; Promote to the front, tracking path changes in the process:
-    (setq multishell-history (delete entry multishell-history))
-    (if (string= path "")
-        (push entry multishell-history)
-      (push becomes multishell-history))))
+    (when entry
+      (setq multishell-history (delete entry multishell-history)))
+    (push becomes multishell-history)))
 
-(defun multishell-name-entry (name)
+(defun multishell-history-entry (name)
   "Return `multishell-history' entry that starts with NAME, or nil if none."
   (let ((match-expr (concat "^" name "\\\(/.*$\\\)?")))
     (dolist (entry multishell-history)
@@ -327,8 +329,8 @@ customize the savehist group to activate savehist."
   ;; activity.  kill-buffer happens behind the scenes a whole lot.)
   (condition-case anyerr
       (let ((entry (and (derived-mode-p 'shell-mode)
-                        (multishell-name-entry (multishell-unbracket-asterisks
-                                                (buffer-name))))))
+                        (multishell-history-entry
+                         (multishell-unbracket-asterisks (buffer-name))))))
         (when (and entry
                    (y-or-n-p (format "Remove multishell history entry `%s'? "
                                      entry)))
@@ -367,7 +369,7 @@ on empty input."
                              (and (with-current-buffer buffer
                                     ;; Shell mode buffers.
                                     (derived-mode-p 'shell-mode))
-                                  (not (multishell-name-entry name))
+                                  (not (multishell-history-entry name))
                                   name)))
                          (buffer-list)))
            multishell-history))
