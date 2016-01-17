@@ -30,11 +30,10 @@
 ;;       * '#ex/ssh:example.net|sudo:root@example.net:/etc' for a root shell
 ;;         starting in /etc on example.net named "*#ex*".
 ;;
-;; (NOTE that you can try to use, eg, '/ssh:example.net:' to get to your
-;; home dir on example.net (if you had one), but that sometimes fails -
-;; particularly remote+sudo to homedir - on an obscure bug. Until that's
-;; fixed, you may need to start remote+sudo shells with an explicit path,
-;; then cd to the homedir.)
+;; (NOTE that there is a problem with specifying a remote homedir using
+;; tramp syntax, eg '/ssh:example.net:'. That sometimes fails on an obscure
+;; bug - particularly for remote+sudo with homedir syntax. Until fixed, you
+;; may need to start remote+sudo shells with an explicit path, then cd ~.)
 ;;
 ;; Customize-group `multishell' to select and activate a keybinding and set
 ;; various behaviors. Customize-group `savehist' to preserve buffer
@@ -45,18 +44,22 @@
 ;;; Change Log:
 ;;
 ;; 2016-01-16 1.0.5 Ken Manheimer:
-;;   - Fix - recognize and respect tramp path syntax to start in home dir
+;;   - History now includes paths, when specified.
+;;   - Actively track current directory in history entry, if it has a path
+;;     Customize: multishell-history-entry-tracks-current-directory
 ;;   - Offer to user to remove shell's history entry when buffer is killed
 ;;   - Fix - prevent duplicate entries for same name but different paths
-;;   - Simplify history var name, migrate existing history from old name if any
+;;   - Fix - recognize and respect tramp path syntax to start in home dir
+;;     - But tramp bug, sudo hops to a home dir often fails.
+;;   - Simplify history var name, migrate existing history if any from old name
 ;; 2016-01-06 Ken Manheimer - Released
 ;; 2016-01-02 Ken Manheimer - working on this in public, but not yet released.
 ;;
 ;;; TODO:
 ;;
 ;; * Isolate frequent failure with remote tramp home-dir syntax (`/host.dom:')
-;; * Track the current directory in each buffer's history entry.
-;; * Provide toggle to see completions buffer with just buffer names or + paths
+;; * Find suitable modes for brief and elaborate name/path exposures,
+;;   e.g. toggle for completions to show just name or name+path
 
 ;;; Code:
 
@@ -240,11 +243,10 @@ For example:
 * '\#ex/ssh:example.net|sudo:root@example.net:/etc' for a root
   shell in /etc on example.net named \"*#ex*\".
 
-\(NOTE that you can specify a remote homedir using tramp syntax,
-eg '/ssh:example.net:'. However that sometimes fails on an
-obscure bug - particularly for remote+sudo with homedir
-syntax. Until fixed, you may need to start remote+sudo shells
-with an explicit path, then cd ~.)
+\(NOTE that there is a problem with specifying a remote homedir using
+tramp syntax, eg '/ssh:example.net:'. That sometimes fails on an obscure
+bug - particularly for remote+sudo with homedir syntax. Until fixed, you
+may need to start remote+sudo shells with an explicit path, then cd ~.)
 
 You can change the startup path for a shell buffer by editing it
 at the completion prompt. The new path will be preserved in
