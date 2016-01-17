@@ -79,7 +79,7 @@ lisp, eg: (global-set-key \"\\M- \" 'multishell-pop-to-shell)."
   :group 'multishell)
 
 (defvar multishell--responsible-for-command-key nil
-  "Multishell internal.")
+  "Coordination for multishell key assignment.")
 (defun multishell-activate-command-key-setter (symbol setting)
   "Implement `multishell-activate-command-key' choice."
   (set-default 'multishell-activate-command-key setting)
@@ -127,13 +127,15 @@ current-buffer behavior.)"
   :type 'boolean
   :group 'multishell)
 
-;; (defcustom multishell-persist-shell-names nil
-;;   "Remember shell name/path associations across sessions. Note well:
-;; This will activate minibuffer history persistence, in general, if it's not
-;; already active."
-;;  :type 'boolean
-;;  :set 'multishell-activate-persistence
-;;  :group 'shell)
+(defcustom multishell-history-entry-tracks-current-directory t
+  "Modify shell buffer's multishell entry to track the current directory.
+
+When set, the path part of the name/path entry for each shell
+will track the current directory of the shell with emacs. If
+`savehist' is active, the directory tracking will extend across
+emacs sessions."
+ :type 'boolean
+ :group 'multishell)
 
 (defvar multishell-history nil
   "Name/path entries, most recent first.")
@@ -147,8 +149,11 @@ current-buffer behavior.)"
 (defvar multishell-primary-name "*shell*"
   "Shell name to use for un-modified multishell-pop-to-shell buffer target.")
 
+;; There is usually only one entry per name, but disruptions happen.
 (defun multishell-register-name-to-path (name path)
-  "Add or replace entry associating NAME with PATH in `multishell-history'."
+  "Add or replace entry associating NAME with PATH in `multishell-history'.
+
+Promote to added/changed entry to the front of the list."
   ;; Add or promote to the front, tracking path changes in the process.
   (let* ((entries (multishell-history-entries name))
          (becomes (concat name path)))
@@ -239,7 +244,7 @@ For example:
 eg '/ssh:example.net:'. However that sometimes fails on an
 obscure bug - particularly for remote+sudo with homedir
 syntax. Until fixed, you may need to start remote+sudo shells
-with an explicit path, then cd to the homedir.)
+with an explicit path, then cd ~.)
 
 You can change the startup path for a shell buffer by editing it
 at the completion prompt. The new path will be preserved in
@@ -318,11 +323,9 @@ customize the savehist group to activate savehist."
 
     ;; We're in the buffer. Activate:
 
-    (cond ((not (comint-check-proc (current-buffer)))
-           (multishell-start-shell-in-buffer (buffer-name (current-buffer))
-                                             use-default-dir))
-          (use-default-dir
-           (cd use-default-dir)))
+    (if (not (comint-check-proc (current-buffer)))
+        (multishell-start-shell-in-buffer (buffer-name (current-buffer))
+                                          use-default-dir))
 
     ;; If the destination buffer has a stopped process, resume it:
     (let ((process (get-buffer-process (current-buffer))))
@@ -498,7 +501,7 @@ Return them as a list (name dir), with dir nil if none given."
                                 "Selecting deleted buffer"))
          (signal (car err)
                  (list
-                  (format "Tramp shell may fail with homedir paths, %s (\"%s\")"
+                  (format "Tramp shell can fail on homedir paths, %s (\"%s\")"
                           "please try with an explicit path"
                           (cadr err)))))))
     (setq buffer (set-buffer (apply 'make-comint
@@ -511,6 +514,76 @@ Return them as a list (name dir), with dir nil if none given."
                                         (symbol-value xargs-name)
                                       '("-i")))))
     (shell-mode)))
+
+(defun multishell-track-dirchange (name newpath)
+  "Change multishell history entry to track current directory."
+  (let* ((entries (multishell-history-entries name)))
+    (dolist (entry entries)
+      (let* ((name-path (multishell-split-entry-name-and-tramp entry))
+             (name (car name-path))
+             (path (cadr name-path))
+             (is-remote (file-remote-p path))
+             (vec (and is-remote (tramp-dissect-file-name path nil)))
+             (localname (if is-remote
+                            (tramp-file-name-localname vec)
+                          path))
+             (newlocalname
+              (replace-regexp-in-string (if (string= localname "")
+                                            "$"
+                                          (regexp-quote localname))
+                                        ;; REP
+                                        newpath
+                                        ;; STRING
+                                        localname
+                                        ;; FIXEDCASE
+                                        t
+                                        ;; LITERAL
+                                        t
+                                        ))
+             (newpath (if is-remote
+                          (tramp-make-tramp-file-name (aref vec 0)
+                                                      (aref vec 1)
+                                                      (aref vec 2)
+                                                      newlocalname
+                                                      (aref vec 4))
+                        newlocalname))
+             (newentry (concat name newpath))
+             (membership (member entry multishell-history)))
+        (when membership
+          (setcar membership newentry))))))
+(defvar multishell-was-default-directory ()
+  "Provide for tracking directory changes.")
+(make-variable-buffer-local 'multishell-was-default-directory)
+(defun multishell-post-command-business ()
+  "Do multishell bookkeeping."
+  ;; Update multishell-history with dir changes.
+  (condition-case err
+      (when (and multishell-history-entry-tracks-current-directory
+                 (derived-mode-p 'shell-mode))
+        (let ((curdir (if (file-remote-p default-directory)
+                          (tramp-file-name-localname
+                           (tramp-dissect-file-name default-directory))
+                        default-directory)))
+          (when (and multishell-was-default-directory
+                     (not (string= curdir multishell-was-default-directory)))
+            (multishell-track-dirchange (multishell-unbracket-asterisks
+                                         (buffer-name))
+                                        curdir))
+          (setq multishell-was-default-directory curdir)))
+    ;; To avoid disruption as a pervasive hook function, swallow all errors:
+    (error nil)))
+(add-hook 'post-command-hook 'multishell-post-command-business)
+
+(defun multishell-split-entry-name-and-tramp (entry)
+  "Given multishell name/path ENTRY, return the separated name and path pair.
+
+Returns nil for empty parts, rather than the empty string."
+  (string-match "^\\([^/]*\\)\\(/?.*\\)?" entry)
+  (let ((name (match-string 1 entry))
+        (path (match-string 2 entry)))
+    (and (string= name "") (setq name nil))
+    (and (string= path "") (setq path nil))
+    (list name path)))
 
 (provide 'multishell)
 
