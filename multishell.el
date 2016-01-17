@@ -521,36 +521,37 @@ Return them as a list (name dir), with dir nil if none given."
     (dolist (entry entries)
       (let* ((name-path (multishell-split-entry-name-and-tramp entry))
              (name (car name-path))
-             (path (cadr name-path))
-             (is-remote (file-remote-p path))
-             (vec (and is-remote (tramp-dissect-file-name path nil)))
-             (localname (if is-remote
-                            (tramp-file-name-localname vec)
-                          path))
-             (newlocalname
-              (replace-regexp-in-string (if (string= localname "")
-                                            "$"
-                                          (regexp-quote localname))
-                                        ;; REP
-                                        newpath
-                                        ;; STRING
-                                        localname
-                                        ;; FIXEDCASE
-                                        t
-                                        ;; LITERAL
-                                        t
-                                        ))
-             (newpath (if is-remote
-                          (tramp-make-tramp-file-name (aref vec 0)
-                                                      (aref vec 1)
-                                                      (aref vec 2)
-                                                      newlocalname
-                                                      (aref vec 4))
-                        newlocalname))
-             (newentry (concat name newpath))
-             (membership (member entry multishell-history)))
-        (when membership
-          (setcar membership newentry))))))
+             (path (cadr name-path)))
+        (when path
+          (let* ((is-remote (file-remote-p path))
+                 (vec (and is-remote (tramp-dissect-file-name path nil)))
+                 (localname (if is-remote
+                                (tramp-file-name-localname vec)
+                              path))
+                 (newlocalname
+                  (replace-regexp-in-string (if (string= localname "")
+                                                "$"
+                                              (regexp-quote localname))
+                                            ;; REP
+                                            newpath
+                                            ;; STRING
+                                            localname
+                                            ;; FIXEDCASE
+                                            t
+                                            ;; LITERAL
+                                            t
+                                            ))
+                 (newpath (if is-remote
+                              (tramp-make-tramp-file-name (aref vec 0)
+                                                          (aref vec 1)
+                                                          (aref vec 2)
+                                                          newlocalname
+                                                          (aref vec 4))
+                            newlocalname))
+                 (newentry (concat name newpath))
+                 (membership (member entry multishell-history)))
+            (when membership
+              (setcar membership newentry))))))))
 (defvar multishell-was-default-directory ()
   "Provide for tracking directory changes.")
 (make-variable-buffer-local 'multishell-was-default-directory)
