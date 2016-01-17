@@ -24,11 +24,16 @@
 ;;
 ;;       For example: 
 ;;
-;;       * '/ssh:example.net:' for a shell buffer in your homedir on
+;;       * '/ssh:example.net:/' for a shell buffer in / on
 ;;         example.net; the buffer will be named "*example.net*".
 ;;
 ;;       * '#ex/ssh:example.net|sudo:root@example.net:/etc' for a root shell
 ;;         starting in /etc on example.net named "*#ex*".
+;;
+;; (NOTE that you can try to use, eg, '/ssh:example.net:' to get to your
+;; home dir on example.net (if you had one), but that generally fails on an
+;; obscure bug. Until emacs versions where that's solved, you need to use
+;; an explicit path.)
 ;;
 ;; Customize-group `multishell' to select and activate a keybinding and set
 ;; various behaviors. Customize-group `savehist' to preserve buffer
@@ -48,6 +53,7 @@
 ;;
 ;;; TODO:
 ;;
+;; * Isolate frequent failure with remote tramp home-dir syntax (`/host.dom:')
 ;; * Track the current directory in each buffer's history entry.
 ;; * Provide toggle to see completions buffer with just buffer names or + paths
 
@@ -222,10 +228,16 @@ the buffer name. Otherwise, the host, domain, or path is used.
 
 For example:
 
-* Use '/ssh:example.net:' for a shell buffer in your homedir on
-  example.net; the buffer will be named \"*example.net*\".
-* '\#ex/ssh:example.net|sudo:root@example.net:/etc' for a root shell 
-  in /etc on example.net named \"*#ex*\".
+* Use '/ssh:example.net:/home/myaccount' for a shell buffer in
+  /home/myaccount on example.net; the buffer will be named
+  \"*example.net*\". 
+* '\#ex/ssh:example.net|sudo:root@example.net:/etc' for a root
+  shell in /etc on example.net named \"*#ex*\".
+
+\(NOTE that you can specify a remote homedir using tramp syntax,
+eg '/ssh:example.net:'. However that generally fails on an
+obscure bug. Until emacs versions where that's solved, you avoid
+that by using an explicit path.)
 
 You can change the startup path for a shell buffer by editing it
 at the completion prompt. The new path will be preserved in
@@ -260,7 +272,11 @@ customize the savehist group to activate savehist."
          (curr-buff-proc (get-buffer-process from-buffer))
          (target-buffer (if from-buffer-is-shell
                             from-buffer
-                          (get-buffer target-shell-buffer-name)))
+                          (let ((got (get-buffer target-shell-buffer-name)))
+                            (if (buffer-live-p got)
+                                got
+                              (kill-buffer got)
+                              (get-buffer target-shell-buffer-name)))))
          inwin
          already-there)
 
@@ -373,7 +389,8 @@ on empty input."
                  (mapcar (lambda (buffer)
                            (let* ((name (multishell-unbracket-asterisks
                                          (buffer-name buffer))))
-                             (and (with-current-buffer buffer
+                             (and (buffer-live-p buffer)
+                                  (with-current-buffer buffer
                                     ;; Shell mode buffers.
                                     (derived-mode-p 'shell-mode))
                                   (not (multishell-history-entries name))
@@ -470,7 +487,18 @@ Return them as a list (name dir), with dir nil if none given."
     ;; (cd default-directory) will connect if remote:
     (when is-remote
       (message "Connecting to %s" default-directory))
-    (cd default-directory)
+    (condition-case err
+        (cd default-directory)
+      (error
+       ;; Aargh. Need to isolate this tramp bug.
+       (when (and (stringp (cadr err))
+                  (string-equal (cadr err)
+                                "Selecting deleted buffer"))
+         (signal (car err)
+                 (list
+                  (format "Tramp shell may fail with homedir paths, %s (\"%s\")"
+                          "please try with an explicit path"
+                          (cadr err)))))))
     (setq buffer (set-buffer (apply 'make-comint
                                     (multishell-unbracket-asterisks buffer-name)
                                     prog
