@@ -31,9 +31,10 @@
 ;;         starting in /etc on example.net named "*#ex*".
 ;;
 ;; (NOTE that you can try to use, eg, '/ssh:example.net:' to get to your
-;; home dir on example.net (if you had one), but that generally fails on an
-;; obscure bug. Until emacs versions where that's solved, you need to use
-;; an explicit path.)
+;; home dir on example.net (if you had one), but that sometimes fails -
+;; particularly remote+sudo to homedir - on an obscure bug. Until that's
+;; fixed, you may need to start remote+sudo shells with an explicit path,
+;; then cd to the homedir.)
 ;;
 ;; Customize-group `multishell' to select and activate a keybinding and set
 ;; various behaviors. Customize-group `savehist' to preserve buffer
@@ -235,9 +236,10 @@ For example:
   shell in /etc on example.net named \"*#ex*\".
 
 \(NOTE that you can specify a remote homedir using tramp syntax,
-eg '/ssh:example.net:'. However that generally fails on an
-obscure bug. Until emacs versions where that's solved, you avoid
-that by using an explicit path.)
+eg '/ssh:example.net:'. However that sometimes fails on an
+obscure bug - particularly for remote+sudo with homedir
+syntax. Until fixed, you may need to start remote+sudo shells
+with an explicit path, then cd to the homedir.)
 
 You can change the startup path for a shell buffer by editing it
 at the completion prompt. The new path will be preserved in
