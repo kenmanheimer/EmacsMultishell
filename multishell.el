@@ -1,4 +1,4 @@
-;;; multishell.el --- manage interaction with multiple local and remote shells
+;;; multishell.el --- facilitate use of multiple local and remote shell buffers
 
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
@@ -21,7 +21,7 @@
 ;; * Append a path to a new shell name to launch a shell in that directory,
 ;; * ... and use a path with Emacs tramp syntax to launch a remote shell.
 ;;
-;;   For example: 
+;;   For example:
 ;;
 ;;   * `/ssh:example.net:/` for a shell buffer in / on
 ;;     example.net; the buffer will be named "*example.net*".
@@ -29,13 +29,13 @@
 ;;   * `#ex/ssh:example.net|sudo:root@example.net:/etc` for a root shell
 ;;     starting in /etc on example.net named "*#ex*".
 ;;
-;; (NOTE that there is a frequent problem with specifying a remote homedir
-;; using tramp syntax, eg `/ssh:example.net:` or `/ssh:example.net:~`. That
-;; sometimes fails on an obscure bug - particularly for remote+sudo with
-;; homedir syntax. Until fixed, you may need to start remote+sudo shells with
-;; an explicit path, then cd ~. With `multishell`s dir-tracking persistent
-;; history, you'll be able to use completion to start that shell in the right
-;; place, in your subsequent sessions.) 
+;; (NOTE - there's a sporadic problem when opening a shell pointed at a
+;; remote homedir, eg `/ssh:example.net:` or `/ssh:example.net:~`. It
+;; sometimes fails, particularly for remote+sudo with homedir syntax. Until
+;; fixed, you may need to start remote+sudo shells with an explicit path,
+;; then cd ~. If you set up `multishell`s persistent dir-tracking history,
+;; you'll be able to use completion to start that shell in the right place,
+;; in your subsequent sessions.)
 ;;
 ;; See the `multishell-pop-to-shell` docstring for details.
 ;;
@@ -44,6 +44,9 @@
 ;; names/paths across emacs sessions.
 ;;
 ;; See the `multishell-pop-to-shell' docstring for details.
+;;
+;; Please use [the repository](https://github.com/kenmanheimer/EmacsMultishell)
+;; issue tracker to report problems, suggestions, etc.
 ;;
 ;;; Change Log:
 ;;

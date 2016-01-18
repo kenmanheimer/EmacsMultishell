@@ -1,7 +1,7 @@
 multishell.el
 =============
 
-Facilitate interaction with multiple local and remote Emacs shell buffers.
+Facilitate use of multiple local and remote Emacs shell buffers.
 
 I use the emacs shell a *lot*. On top of emacs' powerful shell and tramp
 facilities, use a `multishell` (customization-activated) key binding to:
