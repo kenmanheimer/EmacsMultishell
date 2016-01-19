@@ -15,28 +15,32 @@
 ;; a la `pop-to-buffer' - plus a keybinding. Together, they enable you to:
 ;;
 ;; * Get to the input point from wherever you are in a shell buffer,
-;; * ... or to one of your shell buffers if you're not currently in one.
+;;   ... or to any of your shell buffers, from elsewhere inside emacs.
+;;
 ;; * Use universal arguments to launch and choose among alternate shell buffers,
-;; * ... and select which is default.
+;; * ... and change which is the current default.
+;;
+;; * Easily restart disconnected shells, or shells from prior sessions
+;; * ... the latter from Emacs builtin savehist minibuf history persistence
+;;
 ;; * Append a path to a new shell name to launch a shell in that directory,
-;; * ... and use a path with Emacs tramp syntax to launch a remote shell.
+;; * ... and use a path with Emacs tramp syntax to launch a remote shell -
+;;   for example:
 ;;
-;;   For example:
-;;
-;;   * `/ssh:example.net:/` for a shell buffer in / on
-;;     example.net; the buffer will be named "*example.net*".
+;;   * `/ssh:example.net:/` for a shell buffer in / on example.net.
+;;     The buffer will be named "*example.net*".
 ;;
 ;;   * `#ex/ssh:example.net|sudo:root@example.net:/etc` for a root shell
 ;;     starting in /etc on example.net named "*#ex*".
 ;;
-;; See the `multishell-pop-to-shell` docstring for details.
+;;   * '\#intrn/ssh:corp.com|ssh:intern.corp.com|sudo:root@intern.corp.com:/etc'
+;;     to go via corp.com to intern.corp.com, sudood to root, in /etc. Whee! (-:
+;;     The buffer will be named "*#intrn*".
 ;;
-;; (NOTE - there's a sporadic problem when opening a shell pointed at a
-;; remote homedir, eg `/ssh:example.net:` or `/ssh:example.net:~`. It
-;; sometimes fails. Until fixed, you may need to start remote shells with
-;; an explicit path, then cd ~. If you set up `multishell`s persistent
-;; dir-tracking history, you'll be able to use completion to start that
-;; shell in the right place, in your subsequent sessions.)
+;; * File visits will all be under the auspices of the account, and relative to
+;;   the current directory, on the remote host.
+;; 
+;; See the `multishell-pop-to-shell` docstring for details.
 ;;
 ;; Customize-group `multishell' to select and activate a keybinding and set
 ;; various behaviors. Customize-group `savehist' to preserve buffer
@@ -45,6 +49,12 @@
 ;; Please use
 ;; [the multishell repository](https://github.com/kenmanheimer/EmacsMultishell)
 ;; issue tracker to report problems, suggestions, etc.
+;;
+;; (NOTE - tramp sometimes has a problem opening a remote shell pointed at
+;; a homedir, eg `/ssh:example.net:` or `/ssh:example.net:~`. When it
+;; fails, it won't work for the rest of the session. Non-homedir remote
+;; access isn't disrupted. Until this is fixed, you may need to start
+;; remote shells with an explicit path, then cd ~.)
 ;;
 ;; Change Log:
 ;;
