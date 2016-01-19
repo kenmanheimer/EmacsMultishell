@@ -29,23 +29,21 @@
 ;;   * `#ex/ssh:example.net|sudo:root@example.net:/etc` for a root shell
 ;;     starting in /etc on example.net named "*#ex*".
 ;;
+;; See the `multishell-pop-to-shell` docstring for details.
+;;
 ;; (NOTE - there's a sporadic problem when opening a shell pointed at a
 ;; remote homedir, eg `/ssh:example.net:` or `/ssh:example.net:~`. It
-;; sometimes fails, particularly for remotes with empty fs path syntax. Until
-;; fixed, you may need to start remote shells with an explicit path, then
-;; cd ~. If you set up `multishell`s persistent dir-tracking history,
-;; you'll be able to use completion to start that shell in the right place,
-;; in your subsequent sessions.)
-;;
-;; See the `multishell-pop-to-shell` docstring for details.
+;; sometimes fails. Until fixed, you may need to start remote shells with
+;; an explicit path, then cd ~. If you set up `multishell`s persistent
+;; dir-tracking history, you'll be able to use completion to start that
+;; shell in the right place, in your subsequent sessions.)
 ;;
 ;; Customize-group `multishell' to select and activate a keybinding and set
 ;; various behaviors. Customize-group `savehist' to preserve buffer
 ;; names/paths across emacs sessions.
 ;;
-;; See the `multishell-pop-to-shell' docstring for details.
-;;
-;; Please use [the repository](https://github.com/kenmanheimer/EmacsMultishell)
+;; Please use
+;; [the multishell repository](https://github.com/kenmanheimer/EmacsMultishell)
 ;; issue tracker to report problems, suggestions, etc.
 ;;
 ;; Change Log:
@@ -171,7 +169,7 @@ emacs sessions."
 (defvar multishell-primary-name "*shell*"
   "Shell name to use for un-modified multishell-pop-to-shell buffer target.")
 
-;; There is usually only one entry per name, but disruptions happen.
+;; Multiple entries happen because completion also adds name to history.
 (defun multishell-register-name-to-path (name path)
   "Add or replace entry associating NAME with PATH in `multishell-history'.
 
@@ -268,6 +266,9 @@ For example:
   \"*example.net*\". 
 * '\#ex/ssh:example.net|sudo:root@example.net:/etc' for a root
   shell in /etc on example.net named \"*#ex*\".
+* '\#in/ssh:corp.com|ssh:internal.corp.com|sudo:root@internal.corp.com:/etc'
+  for a root shell name \"*in*\" in /etc on internal.corp.com, via host 
+  corp.com.
 
 \(NOTE that there is a problem with specifying a remote homedir using
 tramp syntax, eg '/ssh:example.net:'. That sometimes fails on an obscure
@@ -281,9 +282,9 @@ history but will not take effect for an already-running shell.
 To remove a shell buffer's history entry, kill the buffer and
 affirm removal of the entry when prompted.
 
-===== Activate savehist to persisting your shell buffer names and paths:
+===== Activate savehist to retain shell buffer names and paths across Emacs sessions:
 
-To have emacs maintain your history of shell buffer names and paths, 
+To have emacs maintain your history of shell buffer names and paths,
 customize the savehist group to activate savehist."
 
   (interactive "P")
