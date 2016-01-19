@@ -1,4 +1,4 @@
-;;; multishell.el --- facilitate use of multiple local and remote shell buffers
+;;; multishell.el --- facilitate multiple local and remote shell buffers
 
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
@@ -175,11 +175,18 @@ emacs sessions."
 (defun multishell-register-name-to-path (name path)
   "Add or replace entry associating NAME with PATH in `multishell-history'.
 
-Promote to added/changed entry to the front of the list."
+If NAME already had a PATH and new PATH is empty, retain old one.
+
+Promote added/changed entry to the front of the list."
   ;; Add or promote to the front, tracking path changes in the process.
   (let* ((entries (multishell-history-entries name))
-         (becomes (concat name path)))
+         (becomes (concat name path))
+         oldpath)
     (dolist (entry entries)
+      (when (or (not path) (string= path ""))
+        ;; Retain explicit established path.
+        (setq path (cadr (multishell-split-entry-name-and-tramp entry))
+              becomes (concat name path)))
       (setq multishell-history (delete entry multishell-history)))
     (setq multishell-history (push becomes multishell-history))))
 
