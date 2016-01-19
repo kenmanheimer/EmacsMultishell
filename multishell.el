@@ -183,20 +183,19 @@ emacs sessions."
 (defun multishell-register-name-to-path (name path)
   "Add or replace entry associating NAME with PATH in `multishell-history'.
 
-If NAME already had a PATH and new PATH is empty, retain old one.
+If NAME already had a PATH and new PATH is empty, retain the prior one.
 
 Promote added/changed entry to the front of the list."
   ;; Add or promote to the front, tracking path changes in the process.
   (let* ((entries (multishell-history-entries name))
-         (becomes (concat name path))
-         oldpath)
+         (path (or path "")))
     (dolist (entry entries)
-      (when (or (not path) (string= path ""))
+      (when (string= path "")
         ;; Retain explicit established path.
-        (setq path (cadr (multishell-split-entry-name-and-tramp entry))
-              becomes (concat name path)))
+        (setq path (cadr (multishell-split-entry-name-and-tramp entry))))
       (setq multishell-history (delete entry multishell-history)))
-    (setq multishell-history (push becomes multishell-history))))
+    (setq multishell-history (push (concat name path)
+                                   multishell-history))))
 
 (defun multishell-history-entries (name)
   "Return `multishell-history' entry that starts with NAME, or nil if none."
