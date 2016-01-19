@@ -31,9 +31,9 @@
 ;;
 ;; (NOTE - there's a sporadic problem when opening a shell pointed at a
 ;; remote homedir, eg `/ssh:example.net:` or `/ssh:example.net:~`. It
-;; sometimes fails, particularly for remote+sudo with homedir syntax. Until
-;; fixed, you may need to start remote+sudo shells with an explicit path,
-;; then cd ~. If you set up `multishell`s persistent dir-tracking history,
+;; sometimes fails, particularly for remotes with empty fs path syntax. Until
+;; fixed, you may need to start remote shells with an explicit path, then
+;; cd ~. If you set up `multishell`s persistent dir-tracking history,
 ;; you'll be able to use completion to start that shell in the right place,
 ;; in your subsequent sessions.)
 ;;
@@ -48,24 +48,25 @@
 ;; Please use [the repository](https://github.com/kenmanheimer/EmacsMultishell)
 ;; issue tracker to report problems, suggestions, etc.
 ;;
-;;; Change Log:
+;; Change Log:
 ;;
 ;; * 2016-01-16 1.0.5 Ken Manheimer:
 ;;   - History now includes paths, when designated
 ;;   - Actively track current directory in history entries that have a path.
 ;;     Custom control: multishell-history-entry-tracks-current-directory
-;;   - Offer to remove shell's history entry when buffer is killed
-;;     (For now, the only UI way to remove history entries.)
+;;   - Offer to remove shell's history entry when buffer is killed.
+;;     (Currently the only UI mechanism to remove history entries.)
 ;;   - Fix - prevent duplicate entries for same name but different paths
 ;;   - Fix - recognize and respect tramp path syntax to start in home dir
-;;     - But tramp bug, remote+sudo hops to a home dir can fail, get wedged.
+;;     - But tramp bug, remote w/empty path (homedir) often fails, gets wedged.
 ;;   - Simplify history var name, migrate existing history if any from old name
-;; * 2016-01-04 Ken Manheimer - Released to ELPA
+;; * 2016-01-04 1.0.4 Ken Manheimer - Released to ELPA
 ;; * 2016-01-02 Ken Manheimer - working on this in public, but not yet released.
 ;;
-;;; TODO:
+;; TODO:
 ;;
-;; * Isolate tramp sporadic failure to connect to remote+sudo+homedir syntax
+;; * Isolate tramp sporadic failure to connect to remote+homedir (empty path)
+;;   syntax
 ;;   (eg, /ssh:xyz.com|sudo:root@xyz.com: or /ssh:xyz.com|sudo:root@xyz.com:~)
 ;; * Find suitable, internally consistent ways to sort tidy completions, eg:
 ;;   - first list completions for active shells, then present but inactive,
@@ -263,8 +264,8 @@ For example:
 
 \(NOTE that there is a problem with specifying a remote homedir using
 tramp syntax, eg '/ssh:example.net:'. That sometimes fails on an obscure
-bug - particularly for remote+sudo with homedir syntax. Until fixed, you
-may need to start remote+sudo shells with an explicit path, then cd ~.)
+bug - particularly for remote with empty path (homedir) syntax. Until fixed,
+you may need to start remote shells with an explicit path, then cd ~.)
 
 You can change the startup path for a shell buffer by editing it
 at the completion prompt. The new path will be preserved in
@@ -521,8 +522,9 @@ Return them as a list (name dir), with dir nil if none given."
                                 "Selecting deleted buffer"))
          (signal (car err)
                  (list
-                  (format "Tramp shell can fail on homedir paths, %s (\"%s\")"
-                          "please try with an explicit path"
+                  (format "%s, %s (\"%s\")"
+                          "Tramp shell can fail on empty (homedir) path"
+                          "please try again with an explicit path"
                           (cadr err)))))))
     (setq buffer (set-buffer (apply 'make-comint
                                     (multishell-unbracket-asterisks buffer-name)
