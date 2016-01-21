@@ -535,15 +535,16 @@ Return them as a list (name dir), with dir nil if none given."
         (cd default-directory)
       (error
        ;; Aargh. Need to isolate this tramp bug.
-       (when (and (stringp (cadr err))
-                  (string-equal (cadr err)
-                                "Selecting deleted buffer"))
-         (signal (car err)
-                 (list
-                  (format "%s, %s (\"%s\")"
-                          "Tramp shell can fail on empty (homedir) path"
-                          "please try again with an explicit path"
-                          (cadr err)))))))
+       (if (and (stringp (cadr err))
+                (string-equal (cadr err)
+                              "Selecting deleted buffer"))
+           (signal (car err)
+                   (list
+                    (format "%s, %s (\"%s\")"
+                            "Tramp shell can fail on empty (homedir) path"
+                            "please try again with an explicit path"
+                            (cadr err))))
+         (signal (car err)(cdr err)))))
     (setq buffer (set-buffer (apply 'make-comint
                                     (multishell-unbracket-asterisks buffer-name)
                                     prog
