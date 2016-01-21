@@ -93,6 +93,8 @@
 (require 'comint)
 (require 'shell)
 
+(defvar multishell-version "1.0.5")
+
 (defgroup multishell nil
   "Allout extension that highlights outline structure graphically.
 
@@ -325,6 +327,11 @@ customize the savehist group to activate savehist."
          inwin
          already-there)
 
+    ;; Register early so the entry is pushed to the front:
+    (multishell-register-name-to-path (multishell-unbracket-asterisks
+                                       target-shell-buffer-name)
+                                      use-default-dir)
+
     (when doublearg
       (setq multishell-primary-name target-shell-buffer-name))
 
@@ -369,9 +376,7 @@ customize the savehist group to activate savehist."
     (let ((process (get-buffer-process (current-buffer))))
       (if (and process (equal 'stop (process-status process)))
           (continue-process process)))
-    (multishell-register-name-to-path (multishell-unbracket-asterisks
-                                       target-shell-buffer-name)
-                                      use-default-dir)
+
     (when (or already-there
              (equal (current-buffer) from-buffer))
       (goto-char (point-max))
