@@ -319,11 +319,7 @@ customize the savehist group to activate savehist."
          (curr-buff-proc (get-buffer-process from-buffer))
          (target-buffer (if from-buffer-is-shell
                             from-buffer
-                          (let ((got (get-buffer target-shell-buffer-name)))
-                            (if (buffer-live-p got)
-                                got
-                              (kill-buffer got)
-                              (get-buffer target-shell-buffer-name)))))
+                          (get-buffer target-shell-buffer-name)))
          inwin
          already-there)
 
