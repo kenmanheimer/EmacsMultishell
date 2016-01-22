@@ -201,7 +201,7 @@ Promote added/changed entry to the front of the list."
 
 (defun multishell-history-entries (name)
   "Return `multishell-history' entry that starts with NAME, or nil if none."
-  (let ((match-expr (concat "^" name "\\\(/.*$\\\)?"))
+  (let ((match-expr (concat "^" name "\\\(/.*$\\\)?$"))
         got)
     (dolist (entry multishell-history)
       (when (and (string-match match-expr entry)
