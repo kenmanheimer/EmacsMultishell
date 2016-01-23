@@ -194,7 +194,7 @@ Promote added/changed entry to the front of the list."
     (dolist (entry entries)
       (when (string= path "")
         ;; Retain explicit established path.
-        (setq path (cadr (multishell-split-entry-name-and-tramp entry))))
+        (setq path (cadr (multishell-split-entry entry))))
       (setq multishell-history (delete entry multishell-history)))
     (setq multishell-history (push (concat name path)
                                    multishell-history))))
@@ -303,8 +303,7 @@ customize the savehist group to activate savehist."
   (let* ((from-buffer (current-buffer))
          (from-buffer-is-shell (derived-mode-p 'shell-mode))
          (doublearg (equal arg '(16)))
-         (target-name-and-path
-          (multishell-derive-target-name-and-path
+         (target-name-and-path (multishell-resolve-target-name-and-path
            (if arg
                (multishell-read-bare-shell-buffer-name
                 (format "Shell buffer name [%s]%s "
@@ -312,8 +311,8 @@ customize the savehist group to activate savehist."
                          multishell-primary-name
                          1 (- (length multishell-primary-name) 1))
                         (if doublearg " <==" ":"))
-                multishell-primary-name)
-             multishell-primary-name)))
+                (multishell-unbracket-asterisks multishell-primary-name))
+             (multishell-unbracket-asterisks multishell-primary-name))))
          (use-default-dir (cadr target-name-and-path))
          (target-shell-buffer-name (car target-name-and-path))
          (curr-buff-proc (get-buffer-process from-buffer))
@@ -381,29 +380,30 @@ customize the savehist group to activate savehist."
 
 (defun multishell-kill-buffer-query-function ()
   "Offer to remove multishell-history entry for buffer."
-  ;; Removal choice is crucial, so users can, eg, kill and a runaway shell
-  ;; and keep the history entry to easily restart it.
+  ;; Removal choice is crucial, so users can, eg, kill a shell with huge
+  ;; output backlog, while keeping the history entry to easily restart it.
   ;;
   ;; We use kill-buffer-query-functions instead of kill-buffer-hook because:
   ;;
-  ;; 1. It enables the user to remove the history without killing the buffer,
-  ;;    by cancelling the kill-buffer process after affirming history removal.
+  ;; 1. It enables the user to remove the history without actually killing a
+  ;;    running buffer, by not confirming the subsequent running-proc query.
   ;; 2. kill-buffer-hooks often fails to run when killing shell buffers!
-  ;;    I've failed to resolve that, and like the first reason well enough.
+  ;;    It's probably due to failures in other hooks - beyond our control -
+  ;;    and anyway, I like the first reason well enough.
 
   ;; (Use condition-case to avoid inadvertant disruption of kill-buffer
   ;; activity.  kill-buffer happens behind the scenes a whole lot.)
-  (condition-case anyerr
-      (let ((entries (and (derived-mode-p 'shell-mode)
+  (condition-case err
+        (dolist (entry (and (derived-mode-p 'shell-mode)
                           (multishell-history-entries
-                           (multishell-unbracket-asterisks (buffer-name))))))
-        (dolist (entry entries)
+                           (multishell-unbracket-asterisks (buffer-name)))))
           (when (and entry
                      (y-or-n-p (format "Remove multishell history entry `%s'? "
                                        entry)))
             (setq multishell-history
-                  (delete entry multishell-history)))))
-    (error nil))
+                  (delete entry multishell-history))))
+    (error
+     (message "multishell-kill-buffer-query-function error: %s" err)))
   t)
 (add-hook 'kill-buffer-query-functions 'multishell-kill-buffer-query-function)
 
@@ -424,8 +424,8 @@ customize the savehist group to activate savehist."
 (defun multishell-read-bare-shell-buffer-name (prompt default)
   "PROMPT for shell buffer name, sans asterisks.
 
-Return the supplied name bracketed with the asterisks, or specified DEFAULT
-on empty input."
+Return the supplied name not bracketed with the asterisks, or specified
+DEFAULT on empty input."
   (let* ((candidates
           (append
            ;; Plain shell buffer names appended with names from name/path hist:
@@ -453,39 +453,42 @@ on empty input."
                                ;; HIST:
                                'multishell-history)))
     (if (not (string= got ""))
-        (multishell-bracket-asterisks got)
+        got
       default)))
 
-(defun multishell-derive-target-name-and-path (path-ish)
-  "Give tramp-style PATH-ISH, determine target name and default directory.
+(defun multishell-resolve-target-name-and-path (path-ish)
+  "Given name/tramp-path PATH-ISH, resolve buffer name and initial directory.
 
-The name is the part of the string before the initial '/' slash,
-if any. Otherwise, it's either the host-name, domain-name, final
-directory name, or local host name. The path is everything
-besides the string before the initial '/' slash.
+The name is the part of the string up to the first '/' slash, if
+any. Missing pieces are filled in from remote path elements, if
+any, and multishell history. Given a path and no name, either the
+host-name, domain-name, final directory name, or local host name
+is used.
 
-Return them as a list (name dir), with dir nil if none given."
-  (let (name (path "") dir)
-    (cond ((string= path-ish "") (setq dir multishell-primary-name))
-          ((string-match "^\\*\\([^/]*\\)\\(/.*\\)\\*" path-ish)
-           ;; We have a path, use it
-           (let ((overt-name (match-string 1 path-ish)))
-             (setq path (match-string 2 path-ish))
-             (if (string= overt-name "") (setq overt-name nil))
-             (if (string= path "") (setq path nil))
-             (setq name
-                   (multishell-bracket-asterisks
-                    (or overt-name
-                        (if (file-remote-p path)
-                            (let ((vec (tramp-dissect-file-name path)))
-                              (or (tramp-file-name-host vec)
-                                  (tramp-file-name-domain vec)
-                                  (tramp-file-name-localname vec)
-                                  system-name))
-                          (multishell-unbracket-asterisks
-                           multishell-primary-name)))))))
-          (t (setq name (multishell-bracket-asterisks path-ish))))
-    (list name path)))
+Return them as a list (name path), with name asterisk-bracketed
+and path nil if none resolved."
+  (let* ((splat (multishell-split-entry path-ish))
+         (name (car splat))
+         (path (cadr splat)))
+    (if path
+        (if (not name)
+            (setq name
+                  (if (file-remote-p path)
+                      (let ((vec (tramp-dissect-file-name path)))
+                        (or (tramp-file-name-host vec)
+                            (tramp-file-name-domain vec)
+                            (tramp-file-name-localname vec)
+                            system-name))
+                    multishell-primary-name)))
+      ;; No path - get one from history, if present.
+      (when (not name)
+        (setq name multishell-primary-name))
+      (mapcar #'(lambda (entry)
+                  (when (or (not path) (string= path ""))
+                    (setq path (cadr (multishell-split-entry entry)))))
+              (multishell-history-entries
+               (multishell-unbracket-asterisks name))))
+    (list (multishell-bracket-asterisks name) path)))
 
 (defun multishell-bracket-asterisks (name)
   "Return a copy of name, ensuring it has an asterisk at the beginning and end."
@@ -560,7 +563,7 @@ Return them as a list (name dir), with dir nil if none given."
   "Change multishell history entry to track current directory."
   (let* ((entries (multishell-history-entries name)))
     (dolist (entry entries)
-      (let* ((name-path (multishell-split-entry-name-and-tramp entry))
+      (let* ((name-path (multishell-split-entry entry))
              (name (car name-path))
              (path (cadr name-path)))
         (when path
@@ -613,10 +616,11 @@ Return them as a list (name dir), with dir nil if none given."
                                         curdir))
           (setq multishell-was-default-directory curdir)))
     ;; To avoid disruption as a pervasive hook function, swallow all errors:
-    (error nil)))
+    (error
+     (message "multishell-post-command-business error: %s" err))))
 (add-hook 'post-command-hook 'multishell-post-command-business)
 
-(defun multishell-split-entry-name-and-tramp (entry)
+(defun multishell-split-entry (entry)
   "Given multishell name/path ENTRY, return the separated name and path pair.
 
 Returns nil for empty parts, rather than the empty string."
