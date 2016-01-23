@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.0.6
+;; Version: 1.0.7
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
@@ -54,16 +54,12 @@
 ;; [the multishell repository](https://github.com/kenmanheimer/EmacsMultishell)
 ;; issue tracker to report problems, suggestions, etc.
 ;;
-;; (NOTE - tramp sometimes fails to open specifically a remote shell to
-;; sudo to a homedir, eg `/ssh:example.net|sudo:root:` or
-;; `/ssh:example.net|sudo:root:~`. Once it fails for a specific path, that
-;; path won't work for the rest of the session. Non-homedir remote access
-;; isn't disrupted. You can always work around this by switching to an
-;; explicit, non-homedir remote path when the problem occurs, and then
-;; cd'ing to wherever, including your homedir, in the remote shell.)
-;;
 ;; Change Log:
 ;;
+;; * 2016-01-23 1.0.7 Ken Manheimer:
+;;   - Remove notes about tramp remote+sudo+homedir problem. Apparently it's
+;;     due to something in my local site configuration (happens with -q but
+;;     not -Q).
 ;; * 2016-01-22 1.0.6 Ken Manheimer:
 ;;   - Add multishell-version function.
 ;;   - Tweak commentary/comments/docstrings.
@@ -76,16 +72,12 @@
 ;;     (Currently the only UI mechanism to remove history entries.)
 ;;   - Fix - prevent duplicate entries for same name but different paths
 ;;   - Fix - recognize and respect tramp path syntax to start in home dir
-;;     - But tramp bug, remote|sudo to homedir, often fails, gets wedged.
 ;;   - Simplify history var name, migrate existing history if any from old name
 ;; * 2016-01-04 1.0.4 Ken Manheimer - Released to ELPA
 ;; * 2016-01-02 Ken Manheimer - working on this in public, but not yet released.
 ;;
 ;; TODO:
 ;;
-;; * Isolate tramp's sporadic failure to connect to remote|sudo+homedir
-;;   syntax
-;;   (eg, /ssh:xyz.com|sudo:root@xyz.com: or /ssh:xyz.com|sudo:root@xyz.com:~)
 ;; * Find suitable, internally consistent ways to tidy completions, eg:
 ;;   - first list completions for active shells, then present but inactive,
 ;;     then historical
@@ -102,7 +94,7 @@
 (require 'shell)
 (require 'savehist)
 
-(defvar multishell-version "1.0.6")
+(defvar multishell-version "1.0.7")
 (defun multishell-version (&optional here)
   "Return string describing the loaded multishell version."
   (interactive "P")
@@ -336,16 +328,6 @@ Thanks to tramp, file visits from the shell, and many common
 emacs activities, like dired, will seamlessly be in the auspices
 of the target account, and relative to the current directory, on
 the host where the shell is running.
-
-\(NOTE - tramp sometimes fails to open specifically a remote shell
-to sudo to a homedir, eg `/ssh:example.net|sudo:root:` or
-`/ssh:example.net|sudo:root:~`. Once it fails for a specific
-path, that path won't work for the rest of the
-session. Non-homedir remote access isn't disrupted. You can
-always work around this by switching to an explicit, non-homedir
-remote path when the problem occurs, and then cd'ing to wherever,
-including your homedir, in the remote shell. Non-homedir initial
-paths aren't disrupted.)
 
 You can change the startup path for a shell buffer by editing it
 at the completion prompt. The new path will be preserved in
