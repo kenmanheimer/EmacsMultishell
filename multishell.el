@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.0.5
+;; Version: 1.0.6
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
@@ -15,17 +15,20 @@
 ;; a la `pop-to-buffer' - plus a keybinding. Together, they enable you to:
 ;;
 ;; * Get to the input point from wherever you are in a shell buffer,
-;;   ... or to any of your shell buffers, from elsewhere inside emacs.
+;;   ... or to any of your shell buffers, from anywhere inside emacs.
 ;;
 ;; * Use universal arguments to launch and choose among alternate shell buffers,
-;; * ... and change which is the current default.
+;;   ... and change which is the current default.
 ;;
 ;; * Easily restart disconnected shells, or shells from prior sessions
-;; * ... the latter from Emacs builtin savehist minibuf history persistence
+;;   ... the latter from Emacs builtin savehist minibuf history persistence
 ;;
 ;; * Append a path to a new shell name to launch a shell in that directory,
-;; * ... and use a path with Emacs tramp syntax to launch a remote shell -
+;;   ... and use a path with Emacs tramp syntax to launch a remote shell -
 ;;   for example:
+;;
+;;   * `#root/sudo:root@localhost:/etc` for a buffer named "#root" with a
+;;     root shell starting in /etc.
 ;;
 ;;   * `/ssh:example.net:/` for a shell buffer in / on example.net.
 ;;     The buffer will be named "*example.net*".
@@ -33,33 +36,40 @@
 ;;   * `#ex/ssh:example.net|sudo:root@example.net:/etc` for a root shell
 ;;     starting in /etc on example.net named "*#ex*".
 ;;
-;;   * '\#intrn/ssh:corp.com|ssh:intern.corp.com|sudo:root@intern.corp.com:/etc'
-;;     to go via corp.com to intern.corp.com, sudood to root, in /etc. Whee! (-:
-;;     The buffer will be named "*#intrn*".
+;;   * 'interior/ssh:gateway.corp.com|ssh:interior.corp.com:' to go via
+;;     gateway.corp.com to your homedir on interior.corp.com.  The buffer
+;;     will be named "*interior*". You could append a sudo hop, and so on.
 ;;
-;; * File visits will all be under the auspices of the account, and relative to
-;;   the current directory, on the remote host.
+;; * Thanks to tramp, file visits from the shell will seamlessly be in
+;;   the auspices of the target account, and relative to the current
+;;   directory, on the host where the shell is running.
 ;; 
 ;; See the `multishell-pop-to-shell` docstring for details.
 ;;
 ;; Customize-group `multishell' to select and activate a keybinding and set
 ;; various behaviors. Customize-group `savehist' to preserve buffer
-;; names/paths across emacs sessions.
+;; names/paths across emacs restarts.
 ;;
 ;; Please use
 ;; [the multishell repository](https://github.com/kenmanheimer/EmacsMultishell)
 ;; issue tracker to report problems, suggestions, etc.
 ;;
-;; (NOTE - tramp sometimes has a problem opening a remote shell pointed at
-;; a homedir, eg `/ssh:example.net:` or `/ssh:example.net:~`. When it
-;; fails, it won't work for the rest of the session. Non-homedir remote
-;; access isn't disrupted. Until this is fixed, you may need to start
-;; remote shells with an explicit path, then cd ~.)
+;; (NOTE - tramp sometimes fails to open a remote shell when pointed at a
+;; homedir, eg `/ssh:example.net:` or `/ssh:example.net:~`. Once it fails
+;; for a shell path, that path won't work for the rest of the
+;; session. Non-homedir remote access isn't disrupted. You can always work
+;; around this by switching to an explicit, non-homedir remote path when
+;; the problem occurs, and then cd'ing to wherever, including your homedir,
+;; in the remote shell.)
 ;;
 ;; Change Log:
 ;;
+;; * 2016-01-22 1.0.6 Ken Manheimer:
+;;   - Add multishell-version function.
+;;   - Tweak commentary/comments/docstrings.
+;;   - Null old multishell-buffer-name-history var, if present.
 ;; * 2016-01-16 1.0.5 Ken Manheimer:
-;;   - History now includes paths, when designated
+;;   - History now includes paths, when designated.
 ;;   - Actively track current directory in history entries that have a path.
 ;;     Custom control: multishell-history-entry-tracks-current-directory
 ;;   - Offer to remove shell's history entry when buffer is killed.
@@ -73,27 +83,34 @@
 ;;
 ;; TODO:
 ;;
-;; * Isolate tramp sporadic failure to connect to remote+homedir (empty path)
+;; * Isolate tramp's sporadic failure to connect to remote+homedir (empty path)
 ;;   syntax
 ;;   (eg, /ssh:xyz.com|sudo:root@xyz.com: or /ssh:xyz.com|sudo:root@xyz.com:~)
-;; * Find suitable, internally consistent ways to sort tidy completions, eg:
+;; * Find suitable, internally consistent ways to tidy completions, eg:
 ;;   - first list completions for active shells, then present but inactive,
 ;;     then historical
 ;;   - some way for user to toggle between presenting just buffer names vs
 ;;     full buffer/path
 ;;     - without cutting user off from easy editing of path
-;; * Find proper method for setting field boundary at beginning of tramp path
-;;   in the minibuffer, in order to see whether the field boundary magically
-;;   enables tramp completion of the path.
-;; * Assess whether option to delete history entry on kill-buffer is
-;;   sufficient.
+;; * Try minibuffer field boundary at beginning of tramp path, to see whether
+;;   the field boundary magically enables tramp path completion.
+;; * Assess whether deletion of history entry via kill-buffer is sufficient.
 
 ;;; Code:
 
 (require 'comint)
 (require 'shell)
+(require 'savehist)
 
-(defvar multishell-version "1.0.5")
+(defvar multishell-version "1.0.6")
+(defun multishell-version (&optional here)
+  "Return string describing the loaded multishell version."
+  (interactive "P")
+  (let ((msg (concat "Multishell " multishell-version)))
+    (if here (insert msg)
+      (if (called-interactively-p 'interactive)
+          (message "%s" msg)
+        msg))))
 
 (defgroup multishell nil
   "Allout extension that highlights outline structure graphically.
@@ -143,43 +160,69 @@ lisp, eg: (global-set-key \"\\M- \" 'multishell-pop-to-shell)."
   :set 'multishell-activate-command-key-setter
   :group 'multishell)
 
-;; Assert the customizations whenever the package is loaded:
+;; Implement the key customization whenever the package is loaded:
 (with-eval-after-load "multishell"
   (multishell-implement-command-key-choice))
 
 (defcustom multishell-pop-to-frame nil
-  "*If non-nil, jump to a frame already showing the shell, if another is.
+  "*If non-nil, jump to a frame already showing the shell, if another one is.
 
 Otherwise, disregard already-open windows on the shell if they're
 in another frame, and open a new window on the shell in the
 current frame.
 
-\(Use `pop-up-windows' to change multishell other-buffer vs
-current-buffer behavior.)"
+\(Use `pop-up-windows' to change multishell other-window vs
+current-window behavior.)"
   :type 'boolean
   :group 'multishell)
 
 (defcustom multishell-history-entry-tracks-current-directory t
-  "Modify shell buffer's multishell entry to track the current directory.
+  "Maintain shell's current directory in its multishell history entry.
 
-When set, the path part of the name/path entry for each shell
-will track the current directory of the shell with emacs. If
-`savehist' is active, the directory tracking will extend across
-emacs sessions."
+When set, the history entry for shells started with explicit
+paths will track the shell's current working directory. (Explicit
+paths will not be added to local shells started without one,
+however.)
+
+If `savehist-save-minibuffer-history' is enabled, the current
+working directory of shells \(that were started with an explicit
+path) will be conveyed between emacs sessions."
  :type 'boolean
  :group 'multishell)
 
 (defvar multishell-history nil
   "Name/path entries, most recent first.")
+;; Migrate the few pre 1.0.5 users to changed history var:
 (when (and (not multishell-history)
            (boundp 'multishell-buffer-name-history)
            multishell-buffer-name-history)
-  ;; Migrate few users who had old var to new.
-  (setq multishell-history multishell-buffer-name-history)
- )
+  (setq multishell-history multishell-buffer-name-history
+        multishell-buffer-name-history nil))
 
 (defvar multishell-primary-name "*shell*"
-  "Shell name to use for un-modified multishell-pop-to-shell buffer target.")
+  "Default shell name for un-modified multishell-pop-to-shell buffer target.
+
+This is adjusted by `multishell-pop-to-shell' when it is
+invoked (with doubled universal argument) to set the default.
+
+To preserve changes to this setting across emacs restarts, add it
+to `savehist-additional-variables' by customizing the latter.")
+
+;;; Can't just add multishell-primary-name to savehist-additional-variables
+;;; - it'll be lost any time the user runs emacs without loading
+;;; multishell.  So instead, inform the user that they can customize
+;;; savehist-additional-variables.
+;;;
+;;; I suspect that including savehist-additional-variables *on*
+;;; savehist-additional-variables could avoid this problem, as long as it
+;;; doesn't conflict with user customizations. However, even if that works,
+;;; doing so from multishell would change a behavior (for the better, but)
+;;; beyond multishell's scope, making the change hard to track down.
+
+;; (when (not (member 'multishell-primary-name
+;;                    savehist-additional-variables))
+;;   (setq savehist-additional-variables
+;;         (cons 'multishell-primary-name savehist-additional-variables)))
 
 ;; Multiple entries happen because completion also adds name to history.
 (defun multishell-register-name-to-path (name path)
@@ -255,12 +298,15 @@ single or doubled universal arguments:
 
    Completion is available.
 
-   This combination makes it easy to start and switch between
-   multiple shell buffers.
+   This combination makes it easy to start and switch across
+   multiple shell restarts.
 
  - A double universal argument will prompt for the name *and* set
    the default to that name, so the target shell becomes the
    primary.
+
+   See `multishell-primary-name' for info about preserving the
+   setting across emacs restarts.
 
 ===== Select starting directory and remote host:
 
@@ -272,19 +318,33 @@ the buffer name. Otherwise, the host, domain, or path is used.
 
 For example:
 
-* Use '/ssh:example.net:/home/myaccount' for a shell buffer in
-  /home/myaccount on example.net; the buffer will be named
-  \"*example.net*\". 
-* '\#ex/ssh:example.net|sudo:root@example.net:/etc' for a root
-  shell in /etc on example.net named \"*#ex*\".
-* '\#in/ssh:corp.com|ssh:internal.corp.com|sudo:root@internal.corp.com:/etc'
-  for a root shell name \"*in*\" in /etc on internal.corp.com, via host 
-  corp.com.
+* '#root/sudo:root@localhost:/etc' for a buffer named \"#root\" with a
+  root shell starting in /etc.
 
-\(NOTE that there is a problem with specifying a remote homedir using
-tramp syntax, eg '/ssh:example.net:'. That sometimes fails on an obscure
-bug - particularly for remote with empty path (homedir) syntax. Until fixed,
-you may need to start remote shells with an explicit path, then cd ~.)
+* '/ssh:example.net:/' for a shell buffer in / on example.net; the buffer
+  will be named \"*example.net*\".
+
+* '#ex/ssh:example.net|sudo:root@example.net:/etc' for a root shell
+  starting in /etc on example.net named \"*#ex*\".
+
+* 'interior/ssh:gateway.corp.com|ssh:interior.corp.com:' to go
+  via gateway.corp.com to your homedir on interior.corp.com.  The
+  buffer will be named \"*interior*\". You could append a sudo
+  hop to the path, combining the previous example, and so on.
+
+Thanks to tramp, file visits from the shell, and many common
+emacs activities, like dired, will seamlessly be in the auspices
+of the target account, and relative to the current directory, on
+the host where the shell is running.
+
+\(NOTE that there is a problem with specifying a remote homedir
+using tramp syntax, eg '/ssh:example.net:'. That sometimes fails
+on an obscure bug. Once it fails for a shell path, that path
+won't work for the rest of the session. You can always work
+around this by switching to an explicit, non-homedir remote path
+when the problem occurs, and then cd'ing to wherever, including
+your homedir, in the remote shell. Non-homedir initial paths
+aren't disrupted.)
 
 You can change the startup path for a shell buffer by editing it
 at the completion prompt. The new path will be preserved in
@@ -293,7 +353,7 @@ history but will not take effect for an already-running shell.
 To remove a shell buffer's history entry, kill the buffer and
 affirm removal of the entry when prompted.
 
-===== Activate savehist to retain shell buffer names and paths across Emacs sessions:
+===== Activate savehist to retain shell buffer names and paths across Emacs restarts:
 
 To have emacs maintain your history of shell buffer names and paths,
 customize the savehist group to activate savehist."
