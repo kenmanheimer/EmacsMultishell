@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.0.7
+;; Version: 1.0.8
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
@@ -52,10 +52,22 @@
 ;;
 ;; Please use
 ;; [the multishell repository](https://github.com/kenmanheimer/EmacsMultishell)
-;; issue tracker to report problems, suggestions, etc.
+;; issue tracker to report problems, suggestions, etc, and see that
+;; repository for a bit more documentation.
 ;;
 ;; Change Log:
 ;;
+;; * 2016-01-24 1.0.8 Ken Manheimer:
+;;   - Work around the shell/tramp mishandling of remote+sudo+homedir problem!
+;;     The work around is clean and simple, basically using high-level `cd'
+;;     API and not messing with the low-level default-directory setting.
+;;     (Turns out the problem was not in my local config. Good riddance to the
+;;     awkward failure handler!)
+;;   - Clean up code resolving the destination shell, starting to document the
+;;     decision tree in the process. See getting-to-a-shell.md in the
+;;     multishell repository, https://github.com/kenmanheimer/EmacsMultishell
+;;   - There may be some shake-out on resolving the destination shell, but
+;;     this release gets the fundamental functionality soundly in place.
 ;; * 2016-01-23 1.0.7 Ken Manheimer:
 ;;   - Remove notes about tramp remote+sudo+homedir problem. Apparently it's
 ;;     due to something in my local site configuration (happens with -q but
@@ -94,7 +106,7 @@
 (require 'shell)
 (require 'savehist)
 
-(defvar multishell-version "1.0.7")
+(defvar multishell-version "1.0.8")
 (defun multishell-version (&optional here)
   "Return string describing the loaded multishell version."
   (interactive "P")
@@ -345,30 +357,33 @@ customize the savehist group to activate savehist."
 
   (let* ((from-buffer (current-buffer))
          (from-buffer-is-shell (derived-mode-p 'shell-mode))
+         (primary-name-unbracketed (multishell-unbracket-asterisks
+                                    multishell-primary-name))
+         (fallthrough-name (if from-buffer-is-shell
+                               (buffer-name from-buffer)
+                             primary-name-unbracketed))
          (doublearg (equal arg '(16)))
-         (target-name-and-path (multishell-resolve-target-name-and-path
+         (target-name-and-path
+          (multishell-resolve-target-name-and-path
            (if arg
-               (multishell-read-bare-shell-buffer-name
-                (format "Shell buffer name [%s]%s "
-                        (substring-no-properties
-                         multishell-primary-name
-                         1 (- (length multishell-primary-name) 1))
-                        (if doublearg " <==" ":"))
-                (multishell-unbracket-asterisks multishell-primary-name))
-             (multishell-unbracket-asterisks multishell-primary-name))))
-         (use-default-dir (cadr target-name-and-path))
+               (or (multishell-read-bare-shell-buffer-name
+                    (format "Shell buffer name [%s]%s "
+                            primary-name-unbracketed
+                            (if doublearg " <==" ":"))
+                    primary-name-unbracketed)
+                   primary-name-unbracketed)
+             fallthrough-name)))
+         (use-path (cadr target-name-and-path))
          (target-shell-buffer-name (car target-name-and-path))
+         (target-buffer (get-buffer target-shell-buffer-name))
          (curr-buff-proc (get-buffer-process from-buffer))
-         (target-buffer (if from-buffer-is-shell
-                            from-buffer
-                          (get-buffer target-shell-buffer-name)))
          inwin
          already-there)
 
     ;; Register early so the entry is pushed to the front:
     (multishell-register-name-to-path (multishell-unbracket-asterisks
                                        target-shell-buffer-name)
-                                      use-default-dir)
+                                      use-path)
 
     (when doublearg
       (setq multishell-primary-name target-shell-buffer-name))
@@ -408,7 +423,7 @@ customize the savehist group to activate savehist."
 
     (if (not (comint-check-proc (current-buffer)))
         (multishell-start-shell-in-buffer (buffer-name (current-buffer))
-                                          use-default-dir))
+                                          use-path))
 
     ;; If the destination buffer has a stopped process, resume it:
     (let ((process (get-buffer-process (current-buffer))))
@@ -465,10 +480,9 @@ customize the savehist group to activate savehist."
     nil))
 
 (defun multishell-read-bare-shell-buffer-name (prompt default)
-  "PROMPT for shell buffer name, sans asterisks.
+  "PROMPT for shell buffer name, sans asterisks. Indicate DEFAULT in prompt.
 
-Return the supplied name not bracketed with the asterisks, or specified
-DEFAULT on empty input."
+Return the supplied name, if provided, else return nil."
   (let* ((candidates
           (append
            ;; Plain shell buffer names appended with names from name/path hist:
@@ -497,7 +511,7 @@ DEFAULT on empty input."
                                'multishell-history)))
     (if (not (string= got ""))
         got
-      default)))
+      nil)))
 
 (defun multishell-resolve-target-name-and-path (path-ish)
   "Given name/tramp-path PATH-ISH, resolve buffer name and initial directory.
@@ -510,7 +524,7 @@ is used.
 
 Return them as a list (name path), with name asterisk-bracketed
 and path nil if none resolved."
-  (let* ((splat (multishell-split-entry path-ish))
+  (let* ((splat (multishell-split-entry (or path-ish "")))
          (name (car splat))
          (path (cadr splat)))
     (if path
@@ -563,9 +577,7 @@ and path nil if none resolved."
          (xargs-name (intern-soft (concat "explicit-" name "-args")))
          is-remote)
     (set-buffer buffer-name)
-    (if (and path (not (string= path "")))
-        (setq default-directory path))
-    (setq is-remote (file-remote-p default-directory))
+    (setq is-remote (and path (file-remote-p path)))
     (when (and is-remote
                (derived-mode-p 'shell-mode)
                (not (comint-check-proc (current-buffer))))
@@ -574,23 +586,10 @@ and path nil if none resolved."
       (tramp-cleanup-connection
        (tramp-dissect-file-name default-directory 'noexpand)
        'keep-debug 'keep-password))
-    ;; (cd default-directory) will connect if remote:
     (when is-remote
-      (message "Connecting to %s" default-directory))
-    (condition-case err
-        (cd default-directory)
-      (error
-       ;; Aargh. Need to isolate this tramp bug.
-       (if (and (stringp (cadr err))
-                (string-equal (cadr err)
-                              "Selecting deleted buffer"))
-           (signal (car err)
-                   (list
-                    (format "%s, %s (\"%s\")"
-                            "Tramp shell can fail on remote|sudo to homedir"
-                            "please try again with an explicit path"
-                            (cadr err))))
-         (signal (car err)(cdr err)))))
+      (message "Connecting to %s" path))
+    (if (and path (not (string= path "")))
+        (cd path))
     (setq buffer (set-buffer (apply 'make-comint
                                     (multishell-unbracket-asterisks buffer-name)
                                     prog
