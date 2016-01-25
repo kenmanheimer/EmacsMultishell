@@ -3,7 +3,7 @@ multishell.el
 
 Facilitate use of multiple local and remote Emacs shell buffers.
 
-Multishell is available via Emacs package manager, in ELPA. Install "multishell" from the `M-x package-list-packages` listing.
+Multishell is available via Emacs package manager, [in ELPA](https://elpa.gnu.org/packages/multishell.html). Install "multishell" from the `M-x package-list-packages` listing.
 
 I use the emacs shell a *lot*, including separate shells for separate
 project, and more shells for access to remote systems (which I do a lot, as
