@@ -32,18 +32,18 @@ facilities, use a `multishell` (customization-activated) key binding to:
   * `#ex/ssh:example.net|sudo:root@example.net:/etc` for a root shell
     starting in /etc on example.net named "*#ex*".
 
-  * 'interior/ssh:gateway.corp.com|ssh:interior.corp.com:' to go via
+  * `interior/ssh:gateway.corp.com|ssh:interior.corp.com:` to go via
     gateway.corp.com to your homedir on interior.corp.com.  The buffer
     will be named "*interior*". You could append a sudo hop, and so on.
 
-* Thanks to tramp, file visits from the shell will seamlessly be in
-  the auspices of the target account, and relative to the current
-  directory, on the host where the shell is running.
+* Thanks to tramp, file visits from the shell will seamlessly be on the
+  host where the shell is running, in the auspices of the target account.
 
 See the `multishell-pop-to-shell` docstring (in
 [multishell.el](multishell.el)) for details, and
 [getting-to-a-shell.md](getting-to-a-shell.md) for the nitty-gritty
-decision tree that determines where different hits of the keybinding go.
+decision tree that determines where the keybinding according to the various
+conditions.
 
 Customize-group `multishell' to select and activate a keybinding and set
 various behaviors. Customize-group `savehist' to preserve buffer

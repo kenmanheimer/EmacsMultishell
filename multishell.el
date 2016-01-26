@@ -27,14 +27,14 @@
 ;;   ... and use a path with Emacs tramp syntax to launch a remote shell -
 ;;   for example:
 ;;
-;;   * `#root/sudo:root@localhost:/etc` for a buffer named "#root" with a
+;;   * `#root/sudo:root@localhost:/etc` for a buffer named "*#root*" with a
 ;;     root shell starting in /etc.
 ;;
-;;   * `/ssh:example.net:/` for a shell buffer in / on example.net.
+;;   * `/ssh:example.net:` for a shell buffer in your homedir on example.net.
 ;;     The buffer will be named "*example.net*".
 ;;
-;;   * `#ex/ssh:example.net|sudo:root@example.net:/etc` for a root shell
-;;     starting in /etc on example.net named "*#ex*".
+;;   * `#ex/ssh:example.net|sudo:root@example.net:/var/log` for a root shell
+;;     starting in /var/log on example.net named "*#ex*".
 ;;
 ;;   * 'interior/ssh:gateway.corp.com|ssh:interior.corp.com:' to go via
 ;;     gateway.corp.com to your homedir on interior.corp.com.  The buffer
@@ -96,6 +96,17 @@
 ;;   - some way for user to toggle between presenting just buffer names vs
 ;;     full buffer/path
 ;;     - without cutting user off from easy editing of path
+;;     - maybe use keybindings that wrap minibuffer completion keys
+;;       - minibuffer-local-completion-map, minibuffer-local-must-match-map
+;;         - setup minibuffer with these vars just before doing completions
+;;         - minibuffer exit reverts these vars, if necessary
+;;       - toggles between name and name/path if last command was one of them
+;;       - and an instruction in the completion buffer
+;;       - "complete again immediately to toggle name vs name/path completions"
+;; * Add custom shell launch prep actions
+;;   - shell commands to execute when shell name or path matches a regexp
+;;   - list of [regexp, which (name, path, or both), command]
+;;   - for, eg, knock commands or interface activations, whatever
 ;; * Try minibuffer field boundary at beginning of tramp path, to see whether
 ;;   the field boundary magically enables tramp path completion.
 ;; * Assess whether deletion of history entry via kill-buffer is sufficient.
@@ -209,8 +220,9 @@ path) will be conveyed between emacs sessions."
 This is adjusted by `multishell-pop-to-shell' when it is
 invoked (with doubled universal argument) to set the default.
 
-To preserve changes to this setting across emacs restarts, add it
-to `savehist-additional-variables' by customizing the latter.")
+To track the current primary across emacs restarts, add the name
+of this variable to `savehist-additional-variables' by
+customizing the latter.")
 
 ;;; Can't just add multishell-primary-name to savehist-additional-variables
 ;;; - it'll be lost any time the user runs emacs without loading
@@ -322,14 +334,14 @@ the buffer name. Otherwise, the host, domain, or path is used.
 
 For example:
 
-* '#root/sudo:root@localhost:/etc' for a buffer named \"#root\" with a
+* '#root/sudo:root@localhost:/etc' for a buffer named \"*#root*\" with a
   root shell starting in /etc.
 
-* '/ssh:example.net:/' for a shell buffer in / on example.net; the buffer
-  will be named \"*example.net*\".
+* '/ssh:example.net:' for a shell buffer in your homedir on example.net. 
+  The buffer will be named \"*example.net*\".
 
-* '#ex/ssh:example.net|sudo:root@example.net:/etc' for a root shell
-  starting in /etc on example.net named \"*#ex*\".
+* '#ex/ssh:example.net|sudo:root@example.net:/var/log' for a root shell
+  starting in /var/log on example.net named \"*#ex*\".
 
 * 'interior/ssh:gateway.corp.com|ssh:interior.corp.com:' to go
   via gateway.corp.com to your homedir on interior.corp.com.  The
