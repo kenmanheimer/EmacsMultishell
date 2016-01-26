@@ -220,28 +220,13 @@ path) will be conveyed between emacs sessions."
 (defvar multishell-primary-name "*shell*"
   "Default shell name for un-modified multishell-pop-to-shell buffer target.
 
-This is adjusted by `multishell-pop-to-shell' when it is
-invoked (with doubled universal argument) to set the default.
+This is set by `multishell-pop-to-shell' as the current default,
+when invoked with doubled universal argument.
 
-To track the current primary across emacs restarts, add the name
-of this variable to `savehist-additional-variables' by
-customizing the latter.")
-
-;;; Can't just add multishell-primary-name to savehist-additional-variables
-;;; - it'll be lost any time the user runs emacs without loading
-;;; multishell.  So instead, inform the user that they can customize
-;;; savehist-additional-variables.
-;;;
-;;; I suspect that including savehist-additional-variables *on*
-;;; savehist-additional-variables could avoid this problem, as long as it
-;;; doesn't conflict with user customizations. However, even if that works,
-;;; doing so from multishell would change a behavior (for the better, but)
-;;; beyond multishell's scope, making the change hard to track down.
-
-;; (when (not (member 'multishell-primary-name
-;;                    savehist-additional-variables))
-;;   (setq savehist-additional-variables
-;;         (cons 'multishell-primary-name savehist-additional-variables)))
+If you want the designated primary that you have at the end of
+one emacs session to be resumed at the next, customize
+`savehist-additional-variables' to include the
+`multishell-primary-name'.")
 
 ;; Multiple entries happen because completion also adds name to history.
 (defun multishell-register-name-to-path (name path)
