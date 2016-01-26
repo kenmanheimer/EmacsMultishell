@@ -263,13 +263,14 @@ Promote added/changed entry to the front of the list."
 
 (defun multishell-history-entries (name)
   "Return `multishell-history' entry that starts with NAME, or nil if none."
-  (let ((match-expr (concat "^" name "\\\(/.*$\\\)?$"))
-        got)
-    (dolist (entry multishell-history)
-      (when (and (string-match match-expr entry)
-                 (not (member entry got)))
-        (setq got (cons entry got))))
-    got))
+  (save-match-data
+    (let ((match-expr (concat "^" name "\\\(/.*$\\\)?$"))
+          got)
+      (dolist (entry multishell-history)
+        (when (and (string-match match-expr entry)
+                   (not (member entry got)))
+          (setq got (cons entry got))))
+      got)))
 
 (defun multishell-pop-to-shell (&optional arg)
   "Easily navigate to and within multiple shell buffers, local and remote.
@@ -562,21 +563,6 @@ and path nil if none resolved."
                (multishell-unbracket-asterisks name))))
     (list (multishell-bracket-asterisks name) path)))
 
-(defun multishell-bracket-asterisks (name)
-  "Return a copy of name, ensuring it has an asterisk at the beginning and end."
-  (if (not (string= (substring name 0 1) "*"))
-      (setq name (concat "*" name)))
-  (if (not (string= (substring name -1) "*"))
-      (setq name (concat name "*")))
-  name)
-(defun multishell-unbracket-asterisks (name)
-  "Return a copy of name, removing asterisks, if any, at beginning and end."
-  (if (string= (substring name 0 1) "*")
-      (setq name (substring name 1)))
-  (if (string= (substring name -1) "*")
-      (setq name (substring name 0 -1)))
-  name)
-
 (defun multishell-start-shell-in-buffer (buffer-name path)
   "Start, restart, or continue a shell in BUFFER-NAME on PATH."
   (let* ((buffer (get-buffer buffer-name))
@@ -663,12 +649,27 @@ and path nil if none resolved."
   "Given multishell name/path ENTRY, return the separated name and path pair.
 
 Returns nil for empty parts, rather than the empty string."
-  (string-match "^\\([^/]*\\)\\(/?.*\\)?" entry)
-  (let ((name (match-string 1 entry))
-        (path (match-string 2 entry)))
-    (and (string= name "") (setq name nil))
-    (and (string= path "") (setq path nil))
-    (list name path)))
+  (save-match-data
+    (string-match "^\\([^/]*\\)\\(/?.*\\)?" entry)
+    (let ((name (match-string 1 entry))
+          (path (match-string 2 entry)))
+      (and (string= name "") (setq name nil))
+      (and (string= path "") (setq path nil))
+      (list name path))))
+(defun multishell-bracket-asterisks (name)
+  "Return a copy of name, ensuring it has an asterisk at the beginning and end."
+  (if (not (string= (substring name 0 1) "*"))
+      (setq name (concat "*" name)))
+  (if (not (string= (substring name -1) "*"))
+      (setq name (concat name "*")))
+  name)
+(defun multishell-unbracket-asterisks (name)
+  "Return a copy of name, removing asterisks, if any, at beginning and end."
+  (if (string= (substring name 0 1) "*")
+      (setq name (substring name 1)))
+  (if (string= (substring name -1) "*")
+      (setq name (substring name 0 -1)))
+  name)
 
 (provide 'multishell)
 
