@@ -575,43 +575,25 @@ and path nil if none resolved."
   name)
 
 (defun multishell-start-shell-in-buffer (buffer-name path)
-  "Ensure a shell is started, with name NAME and PATH."
-  ;; We work around shell-mode's bracketing of the buffer name, and do
-  ;; some tramp-mode hygiene for remote connections.
-
-  (let* ((buffer buffer-name)
-         (prog (or explicit-shell-file-name
-                   (getenv "ESHELL")
-                   (getenv "SHELL")
-                   "/bin/sh"))
-         (name (file-name-nondirectory prog))
-         (startfile (concat "~/.emacs_" name))
-         (xargs-name (intern-soft (concat "explicit-" name "-args")))
+  "Start, restart, or continue a shell in BUFFER-NAME on PATH."
+  (let* ((buffer (get-buffer buffer-name))
          is-remote)
-    (set-buffer buffer-name)
-    (setq is-remote (and path (file-remote-p path)))
-    (when (and is-remote
-               (derived-mode-p 'shell-mode)
-               (not (comint-check-proc (current-buffer))))
-      ;; We're returning to an already established but disconnected remote
-      ;; shell, tidy it:
-      (tramp-cleanup-connection
-       (tramp-dissect-file-name default-directory 'noexpand)
-       'keep-debug 'keep-password))
-    (when is-remote
-      (message "Connecting to %s" path))
-    (if (and path (not (string= path "")))
-        (cd path))
-    (setq buffer (set-buffer (apply 'make-comint
-                                    (multishell-unbracket-asterisks buffer-name)
-                                    prog
-                                    (if (file-exists-p startfile)
-                                        startfile)
-                                    (if (and xargs-name
-                                             (boundp xargs-name))
-                                        (symbol-value xargs-name)
-                                      '("-i")))))
-    (shell-mode)))
+
+    (set-buffer buffer)
+
+    (when (and path (file-remote-p path))
+
+      (when (and (derived-mode-p 'shell-mode)
+                 (not (comint-check-proc (current-buffer))))
+        ;; Returning to disconnected remote shell. Do some tidying:
+        (tramp-cleanup-connection
+         (tramp-dissect-file-name default-directory 'noexpand)
+         'keep-debug 'keep-password))
+
+      (message "Connecting to %s" path)
+      (cd path))
+
+    (shell buffer)))
 
 (defun multishell-track-dirchange (name newpath)
   "Change multishell history entry to track current directory."
