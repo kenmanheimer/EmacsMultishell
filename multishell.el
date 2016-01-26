@@ -176,8 +176,11 @@ lisp, eg: (global-set-key \"\\M- \" 'multishell-pop-to-shell)."
   :group 'multishell)
 
 ;; Implement the key customization whenever the package is loaded:
-(with-eval-after-load "multishell"
-  (multishell-implement-command-key-choice))
+(if (fboundp 'with-eval-after-load)
+    (with-eval-after-load "multishell"
+			  (multishell-implement-command-key-choice))
+  (eval-after-load "multishell"
+    (multishell-implement-command-key-choice)))
 
 (defcustom multishell-pop-to-frame nil
   "*If non-nil, jump to a frame already showing the shell, if another one is.
