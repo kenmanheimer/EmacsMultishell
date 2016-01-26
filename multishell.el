@@ -558,16 +558,14 @@ and path nil if none resolved."
     (set-buffer buffer)
     (setq is-active (comint-check-proc buffer))
 
-    (when (and path (file-remote-p path))
+    (when (and path (not is-active))
 
-      (when (and (derived-mode-p 'shell-mode)
-                 (not is-active))
-        ;; Returning to disconnected remote shell. Do some tidying:
+      (when (and (derived-mode-p 'shell-mode) (file-remote-p path))
+        ;; Returning to disconnected remote shell - do some tidying:
         (tramp-cleanup-connection
          (tramp-dissect-file-name default-directory 'noexpand)
-         'keep-debug 'keep-password)))
+         'keep-debug 'keep-password))
 
-    (when (and path (not is-active))
       (message "Connecting to %s" path)
       (cd path))
 
