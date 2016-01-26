@@ -408,9 +408,11 @@ customize the savehist group to activate savehist."
           (not (setq inwin
                      (multishell-get-visible-window-for-buffer target-buffer))))
       ;; No preexisting shell buffer, or not in a visible window:
+      (when (not (get-buffer target-shell-buffer-name))
+        (message "Creating new shell buffer '%s'" target-shell-buffer-name))
       (pop-to-buffer target-shell-buffer-name pop-up-windows))
 
-       ;; Buffer exists and already has a window - jump to it:
+     ;; Buffer exists and already has a window - jump to it:
      (t (if (and multishell-pop-to-frame
                  inwin
                  (not (equal (window-frame (selected-window))
@@ -551,19 +553,21 @@ and path nil if none resolved."
 (defun multishell-start-shell-in-buffer (buffer-name path)
   "Start, restart, or continue a shell in BUFFER-NAME on PATH."
   (let* ((buffer (get-buffer buffer-name))
-         is-remote)
+         is-remote is-active)
 
     (set-buffer buffer)
+    (setq is-active (comint-check-proc buffer))
 
     (when (and path (file-remote-p path))
 
       (when (and (derived-mode-p 'shell-mode)
-                 (not (comint-check-proc (current-buffer))))
+                 (not is-active))
         ;; Returning to disconnected remote shell. Do some tidying:
         (tramp-cleanup-connection
          (tramp-dissect-file-name default-directory 'noexpand)
-         'keep-debug 'keep-password))
+         'keep-debug 'keep-password)))
 
+    (when (and path (not is-active))
       (message "Connecting to %s" path)
       (cd path))
 
