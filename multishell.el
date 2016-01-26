@@ -337,14 +337,14 @@ For example:
   buffer will be named \"*interior*\". You could append a sudo
   hop to the path, combining the previous example, and so on.
 
-Thanks to tramp, file visits from the shell, and many common
-emacs activities, like dired, will seamlessly be in the auspices
-of the target account, and relative to the current directory, on
-the host where the shell is running.
+File visits from the shell, and many common emacs activities like
+dired, will be on the host where the shell is running, in the
+auspices of the target account, and relative to the current
+directory.
 
 You can change the startup path for a shell buffer by editing it
-at the completion prompt. The new path will be preserved in
-history but will not take effect for an already-running shell.
+at the completion prompt. The new path will not take effect for
+an already-running shell.
 
 To remove a shell buffer's history entry, kill the buffer and
 affirm removal of the entry when prompted.
