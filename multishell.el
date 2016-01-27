@@ -57,6 +57,20 @@
 ;;
 ;; Change Log:
 ;;
+;; * XXX 1.0.9 Ken Manheimer:
+;;   - Allow existing shell buffers names as completions, even though they
+;;     duplicate the names with paths. The different behavior for entries
+;;     with existing buffers is actually useful. And in accord with actual
+;;     behavior, where changing path for existing shells doesn't, actually.
+;;   - Add paths to buffers started without one, if multishell history dir
+;;     tracking is enabled.
+;;   - Substantial code cleanup:
+;;     - simplify multishell-start-shell-in-buffer, in particular using
+;;       shell function, rather than unnecessarily going underneath it.
+;;     - fallback to eval-after-load in emacs, that lack
+;;       with-eval-after-load (eg, emacs 23).
+;;     - save-match-data, where match-string is used
+;;     - resituate some helpers
 ;; * 2016-01-24 1.0.8 Ken Manheimer:
 ;;   - Work around the shell/tramp mishandling of remote+sudo+homedir problem!
 ;;     The work around is clean and simple, basically using high-level `cd'
@@ -88,7 +102,7 @@
 ;; * 2016-01-04 1.0.4 Ken Manheimer - Released to ELPA
 ;; * 2016-01-02 Ken Manheimer - working on this in public, but not yet released.
 ;;
-;; TODO:
+;; TODO and Known Issues:
 ;;
 ;; * Find suitable, internally consistent ways to tidy completions, eg:
 ;;   - first list completions for active shells, then present but inactive,
