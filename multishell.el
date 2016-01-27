@@ -482,29 +482,36 @@ customize the savehist group to activate savehist."
      nil 'visible)
     nil))
 
+(defun multishell-set-completion-candidates (candidates-var)
+  "Set var named CANDIDATES-VAR to the full list of candidates.
+
+Respect `multishell-completion-brevity'."
+  (set candidates-var
+       (append
+        ;; Plain shell buffer names appended with names from name/path hist:
+        (remq nil
+              (mapcar (lambda (buffer)
+                        (let* ((name (multishell-unbracket-asterisks
+                                      (buffer-name buffer))))
+                          (and (buffer-live-p buffer)
+                               (with-current-buffer buffer
+                                 ;; Shell mode buffers.
+                                 (derived-mode-p 'shell-mode))
+                               (not (multishell-history-entries name))
+                               name)))
+                      (buffer-list)))
+        (if multishell-completion-brevity
+            (mapcar (lambda (entry) (car (multishell-split-entry entry)))
+                    multishell-history)
+          multishell-history))))
+
 (defun multishell-read-bare-shell-buffer-name (prompt default)
   "PROMPT for shell buffer name, sans asterisks. Indicate DEFAULT in prompt.
 
 Return the supplied name, if provided, else return nil."
-  (let* ((candidates
-          (append
-           ;; Plain shell buffer names appended with names from name/path hist:
-           (remq nil
-                 (mapcar (lambda (buffer)
-                           (let* ((name (multishell-unbracket-asterisks
-                                         (buffer-name buffer))))
-                             (and (buffer-live-p buffer)
-                                  (with-current-buffer buffer
-                                    ;; Shell mode buffers.
-                                    (derived-mode-p 'shell-mode))
-                                  (not (multishell-history-entries name))
-                                  name)))
-                         (buffer-list)))
-           (if multishell-completion-brevity
-               (mapcar (lambda (entry) (car (multishell-split-entry entry)))
-                       multishell-history)
-             multishell-history)))
-         (got (let ((minibuffer-local-completion-map
+  (let* (candidates got)
+    (multishell-set-completion-candidates 'candidates)
+    (setq got (let ((minibuffer-local-completion-map
                      multishell-minibuffer-local-completion-map)
                     (minibuffer-local-must-match-map
                      multishell-minibuffer-local-must-match-map))
@@ -518,7 +525,7 @@ Return the supplied name, if provided, else return nil."
                                  ;; INITIAL-INPUT
                                  nil
                                  ;; HIST:
-                                 'multishell-history))))
+                                 'multishell-history)))
     (if (not (string= got ""))
         got
       nil)))
@@ -668,32 +675,35 @@ Returns nil for empty parts, rather than the empty string."
 (defvar multishell-completion-brevity nil
   "Regulate multishell completion verbosity.
 
-Toggle between brief and full by immediately re-provoking
+Toggle between brief and full by providing a universal argument to
 multishell completions.
 
-Brief completions show only the name, while full completion shows the name/path entries, combined.")
+Brief completions show only the name, while full completion shows
+the name/path entries, combined.")
 
-(defun multishell-minibuffer-complete ()
+(defun multishell-minibuffer-complete (&optional arg)
   "Like minibuffer-complete, with toggle of multishell completion brevity.
 
-Immediate completion repetition toggles between multishell
+Universal argument on completion operation toggles between multishell
 brief - shell buffer names only - and full (names/paths) listings.
 
-See also `multishell-completion-brevity'"
-  (interactive)
-  (if (equal last-command 'completion-at-point)
-      (setq multishell-completion-brevity (not multishell-completion-brevity)))
+See `multishell-completion-brevity'"
+  (interactive "P")
+  (when arg
+    (setq multishell-completion-brevity (not multishell-completion-brevity))
+    (multishell-set-completion-candidates 'candidates))
   (call-interactively 'minibuffer-complete))
-(defun multishell-minibuffer-complete-word ()
+(defun multishell-minibuffer-complete-word (&optional arg)
   "Like minibuffer-complete-word, with toggle of multishell completion brevity.
 
-Immediate completion repetition toggles between multishell
+Universal argument on completion operation toggles between multishell
 brief - shell buffer names only - and full (names/paths) listings.
 
-See also `multishell-completion-brevity'"
-  (interactive)
-  (if (equal last-command 'completion-at-point)
-      (setq multishell-completion-brevity (not multishell-completion-brevity)))
+See `multishell-completion-brevity'"
+  (interactive "P")
+  (when arg
+    (setq multishell-completion-brevity (not multishell-completion-brevity))
+    (multishell-set-completion-candidates 'candidates))
   (call-interactively 'minibuffer-complete-word))
 
 (defvar multishell-minibuffer-local-completion-map
