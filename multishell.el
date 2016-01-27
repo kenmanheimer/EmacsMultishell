@@ -500,18 +500,25 @@ Return the supplied name, if provided, else return nil."
                                   (not (multishell-history-entries name))
                                   name)))
                          (buffer-list)))
-           multishell-history))
-         (got (completing-read prompt
-                               ;; COLLECTION:
-                               (reverse candidates)
-                               ;; PREDICATE:
-                               nil
-                               ;; REQUIRE-MATCH:
-                               'confirm
-                               ;; INITIAL-INPUT
-                               nil
-                               ;; HIST:
-                               'multishell-history)))
+           (if multishell-completion-brevity
+               (mapcar (lambda (entry) (car (multishell-split-entry entry)))
+                       multishell-history)
+             multishell-history)))
+         (got (let ((minibuffer-local-completion-map
+                     multishell-minibuffer-local-completion-map)
+                    (minibuffer-local-must-match-map
+                     multishell-minibuffer-local-must-match-map))
+                (completing-read prompt
+                                 ;; COLLECTION:
+                                 (reverse candidates)
+                                 ;; PREDICATE:
+                                 nil
+                                 ;; REQUIRE-MATCH:
+                                 'confirm
+                                 ;; INITIAL-INPUT
+                                 nil
+                                 ;; HIST:
+                                 'multishell-history))))
     (if (not (string= got ""))
         got
       nil)))
@@ -657,6 +664,52 @@ Returns nil for empty parts, rather than the empty string."
   (if (string= (substring name -1) "*")
       (setq name (substring name 0 -1)))
   name)
+
+(defvar multishell-completion-brevity nil
+  "Regulate multishell completion verbosity.
+
+Toggle between brief and full by immediately re-provoking
+multishell completions.
+
+Brief completions show only the name, while full completion shows the name/path entries, combined.")
+
+(defun multishell-minibuffer-complete ()
+  "Like minibuffer-complete, with toggle of multishell completion brevity.
+
+Immediate completion repetition toggles between multishell
+brief - shell buffer names only - and full (names/paths) listings.
+
+See also `multishell-completion-brevity'"
+  (interactive)
+  (if (equal last-command 'completion-at-point)
+      (setq multishell-completion-brevity (not multishell-completion-brevity)))
+  (call-interactively 'minibuffer-complete))
+(defun multishell-minibuffer-complete-word ()
+  "Like minibuffer-complete-word, with toggle of multishell completion brevity.
+
+Immediate completion repetition toggles between multishell
+brief - shell buffer names only - and full (names/paths) listings.
+
+See also `multishell-completion-brevity'"
+  (interactive)
+  (if (equal last-command 'completion-at-point)
+      (setq multishell-completion-brevity (not multishell-completion-brevity)))
+  (call-interactively 'minibuffer-complete-word))
+
+(defvar multishell-minibuffer-local-completion-map
+  (copy-keymap minibuffer-local-completion-map)
+  "Multishell-tailored version of minibuffer-local-completion-map.")
+(defvar multishell-minibuffer-local-must-match-map
+  (copy-keymap minibuffer-local-must-match-map)
+  "Multishell-tailored version of minibuffer-local-completion-map.")
+(dolist (in-map (list multishell-minibuffer-local-completion-map
+                      multishell-minibuffer-local-must-match-map))
+  (substitute-key-definition 'minibuffer-complete
+                             'multishell-minibuffer-complete
+                             in-map)
+  (substitute-key-definition 'minibuffer-complete-word
+                             'multishell-minibuffer-complete-word
+                             in-map))
 
 (provide 'multishell)
 
