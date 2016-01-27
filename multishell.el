@@ -497,7 +497,9 @@ Respect `multishell-completion-brevity'."
                                (with-current-buffer buffer
                                  ;; Shell mode buffers.
                                  (derived-mode-p 'shell-mode))
-                               (not (multishell-history-entries name))
+                               ;; Allow duplicates, as sign of buffers that
+                               ;; currently exist vs historical entries.
+                               ;;(not (multishell-history-entries name))
                                name)))
                       (buffer-list)))
         (if multishell-completion-brevity
