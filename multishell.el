@@ -100,9 +100,18 @@
 ;;       - minibuffer-local-completion-map, minibuffer-local-must-match-map
 ;;         - setup minibuffer with these vars just before doing completions
 ;;         - minibuffer exit reverts these vars, if necessary
-;;       - toggles between name and name/path if last command was one of them
-;;       - and an instruction in the completion buffer
-;;       - "complete again immediately to toggle name vs name/path completions"
+;;       - toggles between name and name/path if repeat count provided
+;;       - and an instruction about toggling in the completion buffer
+;;     - eventually? "multishell-list-all", based on tabulated-list-mode
+;;       - list-environment package is small, tidy, may be an easy template?
+;;       - sort based on existing vs just historical
+;;       - launch
+;;       - rename, change path, and remove history entries
+;;       - could we use it as the transient completions help window?
+;; * Investigate whether we can recognize and provide for failed hops.
+;;   - Tramp doesn't provide useful reactions for any hop but the first
+;;   - Might be stuff we can do to detect and convey failures?
+;;   - Might be no recourse but to seek tramp changes.
 ;; * Add custom shell launch prep actions
 ;;   - shell commands to execute when shell name or path matches a regexp
 ;;   - list of [regexp, which (name, path, or both), command]
@@ -579,7 +588,7 @@ and path nil if none resolved."
     (dolist (entry entries)
       (let* ((name-path (multishell-split-entry entry))
              (name (car name-path))
-             (path (cadr name-path)))
+             (path (or (cadr name-path) "")))
         (when path
           (let* ((is-remote (file-remote-p path))
                  (vec (and is-remote (tramp-dissect-file-name path nil)))
@@ -605,7 +614,7 @@ and path nil if none resolved."
                                                           (aref vec 2)
                                                           newlocalname
                                                           (aref vec 4))
-                            newlocalname))
+                            newpath))
                  (newentry (concat name newpath))
                  (membership (member entry multishell-history)))
             (when membership
@@ -623,8 +632,7 @@ and path nil if none resolved."
                           (tramp-file-name-localname
                            (tramp-dissect-file-name default-directory))
                         default-directory)))
-          (when (and multishell-was-default-directory
-                     (not (string= curdir multishell-was-default-directory)))
+          (when (not (string= curdir (or multishell-was-default-directory "")))
             (multishell-track-dirchange (multishell-unbracket-asterisks
                                          (buffer-name))
                                         curdir))
