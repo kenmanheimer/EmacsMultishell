@@ -139,6 +139,7 @@
 (require 'comint)
 (require 'shell)
 (require 'savehist)
+(require 'tabulated-list)
 
 (defvar multishell-version "1.0.8")
 (defun multishell-version (&optional here)
@@ -280,6 +281,7 @@ Promote added/changed entry to the front of the list."
           (setq got (cons entry got))))
       got)))
 
+;;;###autoload
 (defun multishell-pop-to-shell (&optional arg)
   "Easily navigate to and within multiple shell buffers, local and remote.
 
@@ -679,6 +681,60 @@ Returns nil for empty parts, rather than the empty string."
   (if (string= (substring name -1) "*")
       (setq name (substring name 0 -1)))
   name)
+
+(defun multishell-list-add-shell ()
+  "Pop to new shell, and refresh the listing buffer."
+  (interactive)
+  (multishell-pop-to-shell '(4))
+  (tabulated-list-revert))
+
+(defun multishell-list-remove ()
+  "Remove current environment variable value."
+  (interactive)
+  (let ((current-prefix-arg t))
+    (multishell-list-setenv)))
+
+(defun multishell-list-setenv ()
+  "Edit the value of current shell entry."
+  (interactive)
+;;  (let ((name (tabulated-list-get-id)))
+  (let* ((name "shell")
+         (path (or (cadr (multishell-history-entries name)) "")))
+    (minibuffer-with-setup-hook
+        (lambda () (insert (concat name path)))
+      (call-interactively 'multishell-register-name-to-path))
+    (tabulated-list-revert)))
+
+(defun multishell-list-entries ()
+  "Generate multishell name/path entries list for tabulated-list."
+  (mapcar #'(lambda (entry)
+            (multishell-split-entry entry))
+          multishell-history)
+
+(define-derived-mode multishell-list-mode
+    tabulated-list-mode "Shells"
+  "Major mode for listing current and historically registered shells..
+\\{multishell-list-mode-map\}"
+  (setq tabulated-list-format [("Name" 15 t)
+                               ("Path" 60 t)]
+        tabulated-list-sort-key (cons "Name" nil)
+        tabulated-list-padding 2
+        tabulated-list-entries #'multishell-list-entries)
+  (tabulated-list-init-header))
+
+(define-key multishell-list-mode-map (kbd "s") 'multishell-list-add-)
+(define-key multishell-list-mode-map (kbd "a") 'multishell-list-addenv)
+(define-key multishell-list-mode-map (kbd "d") 'multishell-list-clear)
+
+;;;###autoload
+(defun multishell-list ()
+  "List process environment in a tabulated view."
+  (interactive)
+  (let ((buffer (get-buffer-create "*Process-Environment*")))
+    (pop-to-buffer buffer)
+    (multishell-list-mode)
+    (tabulated-list-print)))
+
 
 (provide 'multishell)
 
