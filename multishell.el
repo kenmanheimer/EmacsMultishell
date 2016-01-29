@@ -519,10 +519,8 @@ Return the supplied name, if provided, else return nil."
                              (and (buffer-live-p buffer)
                                   (with-current-buffer buffer
                                     ;; Shell mode buffers.
-                                    (derived-mode-p 'shell-mode))
-                                  ;; Allow duplicates, as sign of buffers that
-                                  ;; currently exist vs historical entries.
-                                  ;;(not (multishell-history-entries name))
+                                    (and (derived-mode-p 'shell-mode)
+                                         (comint-check-proc (current-buffer))))
                                   name)))
                          (buffer-list)))
            multishell-history))
