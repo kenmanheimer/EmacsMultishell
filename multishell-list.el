@@ -14,6 +14,11 @@
   "Pop to current entry's shell, and refresh the listing buffer."
   (interactive)
   (multishell-pop-to-shell nil (tabulated-list-get-id)))
+(defun multishell-list-open-as-default ()
+  "Pop to current entry's shell, and set as the default shell."
+  (interactive)
+  (message "%s <==" (multishell-name-from-entry (tabulated-list-get-id)))
+  (multishell-pop-to-shell '(16) (tabulated-list-get-id)))
 (defun multishell-list-open-here ()
   "Switch to current entry's shell buffer."
   (interactive)
@@ -119,6 +124,7 @@
 (define-key multishell-list-mode-map (kbd "d") 'multishell-list-delete)
 (define-key multishell-list-mode-map (kbd "e") 'multishell-list-edit-entry)
 (define-key multishell-list-mode-map (kbd "o") 'multishell-list-open-pop)
+(define-key multishell-list-mode-map (kbd "O") 'multishell-list-open-as-default)
 (define-key multishell-list-mode-map
   (kbd "<return>") 'multishell-list-open-here)
 
