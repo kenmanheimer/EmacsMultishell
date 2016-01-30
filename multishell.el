@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.0.9
+;; Version: 1.0.10
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
@@ -59,6 +59,16 @@
 ;;
 ;; Change Log:
 ;;
+;; * 2016-01-30 1.0.10 Ken Manheimer:
+;;   - shake out some initial multishell-list glitches:
+;;     - Delete shell buffer, if present, when deleting an entry.
+;;       (Offer to) delete shell buffer, if present, when deleting an
+;;       entry. Rely on the default active-shell deletion prompting
+;;       for confirmation, supplementing with our own confirmation
+;;       for inactive shell buffers.
+;;     - Set recency (numeric rank) as initial sort field
+;;     - Recompute list on any operation that affects it, and try to
+;;       preserve stability. (Still needs work.)
 ;; * 2016-01-30 1.0.9 Ken Manheimer:
 ;;   - Add multishell-list for managing the collection of current and
 ;;     history-registered shells: edit, delete, and switch/pop to entries.
@@ -108,6 +118,12 @@
 ;;
 ;; TODO and Known Issues:
 ;;
+;; * Resolve multishell-list sort glitches:
+;;   - Fix config so multishell-list-revert-buffer-kludge is not needed
+;;   - Make multishell-list-edit-entry in-place, so changed entries recency
+;;     doesn't change.
+;;   - Fill in kill-buffer prompting gaps, eg if default live-process
+;;     prompts are inhibited.
 ;; * Add custom shell launch prep actions
 ;;   - for, eg, port knocking, interface activations
 ;;   - shell commands to execute when shell name or path matches a regexp
@@ -129,7 +145,7 @@
 (require 'savehist)
 (require 'multishell-list)
 
-(defvar multishell-version "1.0.9")
+(defvar multishell-version "1.0.10")
 (defun multishell-version (&optional here)
   "Return string describing the loaded multishell version."
   (interactive "P")

@@ -3,7 +3,7 @@
 ;; Copyright (C) 2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.0.9
+;; Version: 1.0.10
 ;; Created: 2016 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
@@ -13,19 +13,32 @@
 (defun multishell-list-open-pop ()
   "Pop to current entry's shell, and refresh the listing buffer."
   (interactive)
-  (multishell-pop-to-shell nil (tabulated-list-get-id)))
+  (let ((start-buffer (current-buffer)))
+    (multishell-pop-to-shell nil (tabulated-list-get-id))
+    (with-current-buffer start-buffer
+      (revert-buffer))))
 (defun multishell-list-open-as-default ()
   "Pop to current entry's shell, and set as the default shell."
   (interactive)
-  (message "%s <==" (multishell-name-from-entry (tabulated-list-get-id)))
-  (multishell-pop-to-shell '(16) (tabulated-list-get-id)))
+  (let ((start-buffer (current-buffer)))
+    (message "%s <==" (multishell-name-from-entry (tabulated-list-get-id)))
+    (multishell-pop-to-shell '(16) (tabulated-list-get-id)))
+    (with-current-buffer start-buffer
+      (revert-buffer)))
 (defun multishell-list-open-here ()
   "Switch to current entry's shell buffer."
   (interactive)
-  (multishell-pop-to-shell nil (tabulated-list-get-id) 'here))
+  (let ((start-buffer (current-buffer)))
+    (multishell-pop-to-shell nil (tabulated-list-get-id) 'here))
+    (with-current-buffer start-buffer
+      ;; In case they use switch-to-buffer or whatever to return.
+      (revert-buffer)))
 
 (defun multishell-list-delete ()
-  "Remove current environment variable value."
+  "Remove current shell entry, and prompt for buffer-removal if present.
+
+\(We depend on intrinsic confirmation prompts for active buffers,
+supplemented by our own when buffer is inactive.)"
   (interactive)
   (let* ((where (save-excursion (beginning-of-line) (point)))
          (entry (tabulated-list-get-id))
@@ -39,8 +52,6 @@
                (y-or-n-p (format "Kill buffer %s? " name-bracketed)))
            (kill-buffer name-bracketed)))
     (revert-buffer)
-    (if (not tabulated-list-sort-key)
-        (revert-buffer))
     (goto-char where)))
 
 (defun multishell-list-edit-entry ()
@@ -64,8 +75,6 @@
           (rename-buffer (multishell-bracket revised-name))))
       (multishell-register-name-to-path revised-name revised-path)
       (revert-buffer)
-      (if (not tabulated-list-sort-key)
-          (revert-buffer))
       (goto-char where))))
 
 (defun multishell-list-placeholder (value default)
@@ -101,7 +110,7 @@
                                 status
                                 name
                                 (multishell-list-placeholder hops "-")
-                                (multishell-list-placeholder path ":")))))
+                                (multishell-list-placeholder path "~")))))
             (multishell-all-entries))))
 
 (defun compare-strings-as-numbers (a b)
@@ -112,14 +121,25 @@
     tabulated-list-mode "Shells"
   "Major mode for listing current and historically registered shells..
 \\{multishell-list-mode-map\}"
-  (setq tabulated-list-format [("#" 0 compare-strings-as-numbers)
-                               ("! " 1 t)
-                               ("Name" 15 t)
-                               ("Hops" 30 t)
-                               ("Path" 30 t)]
-        tabulated-list-sort-key nil
+  (setq tabulated-list-format
+        [;; (name width sort '(:right-align nil :pad-right nil))
+         ("#" 0 compare-strings-as-numbers)
+         ("! " 1 t)
+         ("Name" 15 t)
+         ("Hops" 30 t)
+         ("Path" 30 t)]
+        tabulated-list-sort-key '( "#" . t)
         tabulated-list-entries #'multishell-list-entries)
   (tabulated-list-init-header))
+
+(defvar multishell-list-already-re-reverting nil
+  "Don't set - internal for `multishell-list-revert-buffer-kludge'.")
+(defun multishell-list-revert-buffer-kludge ()
+  "Double revert for kludge workaround of untable sorting."
+  (if (not multishell-list-already-re-reverting)
+      (let ((multishell-list-already-re-reverting t))
+        (revert-buffer))))
+(add-hook 'tabulated-list-revert-hook 'multishell-list-revert-buffer-kludge)
 
 (define-key multishell-list-mode-map (kbd "d") 'multishell-list-delete)
 (define-key multishell-list-mode-map (kbd "e") 'multishell-list-edit-entry)
