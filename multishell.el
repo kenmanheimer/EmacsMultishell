@@ -540,19 +540,20 @@ Optional ACTIVE-DUPLICATED will return a copy of
 `multishell-history' with unbracketed names of active buffers,
 sans paths, appended to the list, so they have short and long
 completions."
-  ;; Reorder so active buffers are listed first:
-  (let (active-entries active-names historicals splat name path buffer)
+  ;; Reorder so active lead present lead historical entries:
+  (let (active-entries active-names present past splat name path buffer)
     (dolist (entry multishell-history)
       (setq splat (multishell-split-entry entry)
             name (car splat)
             path (cadr splat)
             buffer (and name (get-buffer (multishell-bracket name))))
-      (if (and (buffer-live-p buffer)
-               (comint-check-proc buffer))
-          (setq active-entries (push entry active-entries)
-                active-names (push name active-names))
-        (setq historicals (push entry historicals))))
-    (setq multishell-history (append active-entries historicals))
+      (if (buffer-live-p buffer)
+          (if (comint-check-proc buffer)
+              (setq active-entries (push entry active-entries)
+                    active-names (push name active-names))
+            (setq present (push entry present)))
+        (setq past (push entry past))))
+    (setq multishell-history (append active-entries present past))
     (if active-duplicated
         (append multishell-history active-names)
       multishell-history)))

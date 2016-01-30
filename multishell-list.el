@@ -72,9 +72,9 @@
                        (buffer (and name
                                     (get-buffer
                                      (multishell-bracket name))))
-                       (status (cond ((not buffer) " ")
+                       (status (cond ((not buffer) "x")
                                      ((comint-check-proc buffer) "+")
-                                     (t "-")))
+                                     (t ".")))
                        (rest (cadr splat))
                        (dissected (and rest (file-remote-p rest)
                                        (tramp-dissect-file-name rest t)))
