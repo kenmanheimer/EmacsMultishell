@@ -44,8 +44,7 @@
 ;;   the auspices of the target account, and relative to the current
 ;;   directory, on the host where the shell is running.
 ;;
-;; * Manage your list of active and historically registered shells, as a
-;;   collection.
+;; * Manage your list of shells, current and past, as a collection.
 ;;
 ;; See the `multishell-pop-to-shell` docstring for details.
 ;;
