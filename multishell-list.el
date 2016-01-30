@@ -8,6 +8,8 @@
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
 
+;; See multishell.el for commentary, change log, etc.
+
 (require 'tabulated-list)
 
 (defun multishell-list-open-pop ()
