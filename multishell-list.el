@@ -3,7 +3,7 @@
 ;; Copyright (C) 2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.0.10
+;; Version: 1.1.1
 ;; Created: 2016 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell

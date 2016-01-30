@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.0.10
+;; Version: 1.1.1
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
@@ -59,12 +59,13 @@
 ;;
 ;; Change Log:
 ;;
-;; * 2016-01-30 1.0.10 Ken Manheimer:
+;; * 2016-01-30 1.1.1 Ken Manheimer:
 ;;   - shake out initial multishell-list glitches:
 ;;     - (Offer to) delete shell buffer, if present, when deleting entry.
 ;;     - Set recency (numeric rank) as initial sort field
 ;;     - Recompute list on most operations that affect the order, and try to
 ;;       preserve stability. (Kludgy solution, needs work.)
+;;   - Set version to 1.1.1 - multishell-list addition should have been 1.1.0.
 ;; * 2016-01-30 1.0.9 Ken Manheimer:
 ;;   - Add multishell-list for managing the collection of current and
 ;;     history-registered shells: edit, delete, and switch/pop to entries.
@@ -142,7 +143,7 @@
 (require 'savehist)
 (require 'multishell-list)
 
-(defvar multishell-version "1.0.10")
+(defvar multishell-version "1.1.1")
 (defun multishell-version (&optional here)
   "Return string describing the loaded multishell version."
   (interactive "P")
