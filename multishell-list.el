@@ -48,10 +48,16 @@
                    (format "Edit shell spec for %s: " name)
                    nil
                    entry))
-         (revised-pair (when revised (multishell-split-entry revised))))
-    (when revised-pair
+         (revised-path (and revised (cadr (multishell-split-entry revised))))
+         (revised-name (multishell-name-from-entry revised))
+         buffer)
+    (when (not (string= revised entry))
       (multishell-delete-history-name name)
-      (multishell-register-name-to-path (car revised-pair) (cadr revised-pair))
+      (when (and (not (string= name revised-name))
+                 (setq buffer (get-buffer (multishell-bracket name))))
+        (with-current-buffer buffer
+          (rename-buffer (multishell-bracket revised-name))))
+      (multishell-register-name-to-path revised-name revised-path)
       (revert-buffer)
       (if (not tabulated-list-sort-key)
           (revert-buffer))
