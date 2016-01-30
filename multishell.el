@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.0.8
+;; Version: 1.0.9
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
@@ -43,7 +43,10 @@
 ;; * Thanks to tramp, file visits from the shell will seamlessly be in
 ;;   the auspices of the target account, and relative to the current
 ;;   directory, on the host where the shell is running.
-;; 
+;;
+;; * Manage your list of active and historically registered shells, as a
+;;   collection.
+;;
 ;; See the `multishell-pop-to-shell` docstring for details.
 ;;
 ;; Customize-group `multishell' to select and activate a keybinding and set
@@ -57,17 +60,19 @@
 ;;
 ;; Change Log:
 ;;
-;; * XXX 1.0.9 Ken Manheimer:
-;;   - Allow existing shell buffers names as completions, even though they
-;;     duplicate the names with paths. The different behavior for entries
-;;     with existing buffers is actually useful. And in accord with actual
-;;     behavior, where changing path for existing shells doesn't, actually.
-;;   - Add paths to buffers started without one, if multishell history dir
+;; * 2016-01-30 1.0.9 Ken Manheimer:
+;;   - Add multishell-list for managing the collection of current and
+;;     history-registered shells: edit, delete, and switch/pop to entries.
+;;     Easy access by invoking `multishell-pop-to-shell' from in the
+;;     `multishell-pop-to-shell' universal arg prompts.
+;;   - Duplicate existing shell buffer names in completions, for distinction.
+;;   - Add paths to buffers started without one, when multishell history dir
 ;;     tracking is enabled.
-;;   - Substantial code cleanup:
-;;     - simplify multishell-start-shell-in-buffer, in particular using
+;;   - Major code cleanup:
+;;     - Simplify multishell-start-shell-in-buffer, in particular using
 ;;       shell function, rather than unnecessarily going underneath it.
-;;     - fallback to eval-after-load in emacs, that lack
+;;     - Establish multishell-name-from-entry as canonical name resolver.
+;;     - Fallback to eval-after-load in emacs versions that lack
 ;;       with-eval-after-load (eg, emacs 23).
 ;;     - save-match-data, where match-string is used
 ;;     - resituate some helpers
@@ -104,44 +109,28 @@
 ;;
 ;; TODO and Known Issues:
 ;;
-;; * Find suitable, internally consistent ways to tidy completions, eg:
-;;   - first list completions for active shells, then present but inactive,
-;;     then historical
-;;   - some way for user to toggle between presenting just buffer names vs
-;;     full buffer/path
-;;     - without cutting user off from easy editing of path
-;;     - maybe use keybindings that wrap minibuffer completion keys
-;;       - minibuffer-local-completion-map, minibuffer-local-must-match-map
-;;         - setup minibuffer with these vars just before doing completions
-;;         - minibuffer exit reverts these vars, if necessary
-;;       - toggles between name and name/path if repeat count provided
-;;       - and an instruction about toggling in the completion buffer
-;;     - eventually? "multishell-list-all", based on tabulated-list-mode
-;;       - list-environment package is small, tidy, may be an easy template?
-;;       - sort based on existing vs just historical
-;;       - launch
-;;       - rename, change path, and remove history entries
-;;       - could we use it as the transient completions help window?
+;; * Add custom shell launch prep actions
+;;   - for, eg, port knocking, interface activations
+;;   - shell commands to execute when shell name or path matches a regexp
+;;   - list of (regexp, which - name, path, or both, command)
+;; * Adapt multishell-list facilities for all-completions
+;;   - See info on minibuffer-completion-help, display-completion-list
+;;   - implement markup for mouse selection
 ;; * Investigate whether we can recognize and provide for failed hops.
 ;;   - Tramp doesn't provide useful reactions for any hop but the first
 ;;   - Might be stuff we can do to detect and convey failures?
 ;;   - Might be no recourse but to seek tramp changes.
-;; * Add custom shell launch prep actions
-;;   - shell commands to execute when shell name or path matches a regexp
-;;   - list of [regexp, which (name, path, or both), command]
-;;   - for, eg, knock commands or interface activations, whatever
 ;; * Try minibuffer field boundary at beginning of tramp path, to see whether
 ;;   the field boundary magically enables tramp path completion.
-;; * Assess whether deletion of history entry via kill-buffer is sufficient.
 
 ;;; Code:
 
 (require 'comint)
 (require 'shell)
 (require 'savehist)
-(require 'tabulated-list)
+(require 'multishell-list)
 
-(defvar multishell-version "1.0.8")
+(defvar multishell-version "1.0.9")
 (defun multishell-version (&optional here)
   "Return string describing the loaded multishell version."
   (interactive "P")
@@ -272,25 +261,30 @@ Promote added/changed entry to the front of the list."
 
 (defun multishell-history-entries (name)
   "Return `multishell-history' entry that starts with NAME, or nil if none."
-  (save-match-data
-    (let ((match-expr (concat "^" name "\\\(/.*$\\\)?$"))
-          got)
-      (dolist (entry multishell-history)
-        (when (and (string-match match-expr entry)
-                   (not (member entry got)))
-          (setq got (cons entry got))))
-      got)))
+  (let (got)
+    (dolist (entry multishell-history)
+      (when (and (string-equal name (multishell-name-from-entry entry))
+                 (not (member entry got)))
+        (setq got (cons entry got))))
+    got))
 
 ;;;###autoload
-(defun multishell-pop-to-shell (&optional arg)
+(defun multishell-pop-to-shell (&optional arg name here)
   "Easily navigate to and within multiple shell buffers, local and remote.
 
-Use universal arguments to launch and choose between alternate
-shell buffers and to select which is default.  Append a path to
-a new shell name to launch a shell in that directory, and use
-Emacs tramp syntax to launch a remote shell.
+Use a single `universal-argument' (\\[universal-argument]) to launch and choose between
+nalternate shell buffers, and a doubled universal argument to also set your
+choice as the ongoing default.  Append a path to a new shell name to launch
+a shell in that directory, and use Emacs tramp syntax to launch a remote
+shell. There is a shortcut to manage your list of current and
+historical shells, collectively, using `multishell-list' - see below.
 
 Customize-group `multishell' to set up a key binding and tweak behaviors.
+
+Manage your collection of current and historical shells by
+recursively invoking \\[multishell-pop-to-shell] at either of the
+`multishell-pop-to-shell' universal argument prompts, or at any time via
+\\[multishell-list]. Hit ? in the listing buffer for editing commands.
 
 ==== Basic operation:
 
@@ -319,8 +313,9 @@ was disconnected or otherwise stopped, it's resumed.
 
 ===== Universal arg to start and select between named shell buffers:
 
-You can name alternate shell buffers to create or return to using
-single or doubled universal arguments:
+You can name alternate shell buffers to create or return to, by
+prefixing your \\[multishell-pop-to-shell] invocation with single or double
+`universal-argument', \\[universal-argument]:
 
  - With a single universal argument, prompt for the buffer name
    to use (without the asterisks that shell mode will put around
@@ -337,6 +332,12 @@ single or doubled universal arguments:
 
    See `multishell-primary-name' for info about preserving the
    setting across emacs restarts.
+
+ - Manage your collection of current and historical shells by
+   recursively invoking \\[multishell-pop-to-shell] at either of the
+   `multishell-pop-to-shell' universal argument prompts, or at any
+   time via \\[multishell-list]. Hit ? in the listing buffer for
+   editing commands.
 
 ===== Select starting directory and remote host:
 
@@ -381,9 +382,19 @@ customize the savehist group to activate savehist."
 
   (interactive "P")
 
+  (let ((token '(token)))
+    (if (window-minibuffer-p)
+        (throw 'multishell-do-list token)
+      (if (equal token
+                 (catch 'multishell-do-list
+                   (multishell-pop-to-shell-worker arg name here)))
+          (multishell-list)))))
+
+(defun multishell-pop-to-shell-worker (&optional arg name here)
+  "Do real work of `multishell-pop-to-shell', which see."
   (let* ((from-buffer (current-buffer))
          (from-buffer-is-shell (derived-mode-p 'shell-mode))
-         (primary-name-unbracketed (multishell-unbracket-asterisks
+         (primary-name-unbracketed (multishell-unbracket
                                     multishell-primary-name))
          (fallthrough-name (if from-buffer-is-shell
                                (buffer-name from-buffer)
@@ -391,14 +402,15 @@ customize the savehist group to activate savehist."
          (doublearg (equal arg '(16)))
          (target-name-and-path
           (multishell-resolve-target-name-and-path
-           (if arg
-               (or (multishell-read-bare-shell-buffer-name
-                    (format "Shell buffer name [%s]%s "
-                            primary-name-unbracketed
-                            (if doublearg " <==" ":"))
-                    primary-name-unbracketed)
-                   primary-name-unbracketed)
-             fallthrough-name)))
+           (cond (name name)
+                 (arg
+                  (or (multishell-read-unbracketed-entry
+                       (format "Shell buffer name [%s]%s "
+                               primary-name-unbracketed
+                               (if doublearg " <==" ":"))
+                       primary-name-unbracketed)
+                      primary-name-unbracketed))
+                 (t fallthrough-name))))
          (use-path (cadr target-name-and-path))
          (target-shell-buffer-name (car target-name-and-path))
          (target-buffer (get-buffer target-shell-buffer-name))
@@ -407,7 +419,7 @@ customize the savehist group to activate savehist."
          already-there)
 
     ;; Register early so the entry is pushed to the front:
-    (multishell-register-name-to-path (multishell-unbracket-asterisks
+    (multishell-register-name-to-path (multishell-unbracket
                                        target-shell-buffer-name)
                                       use-path)
 
@@ -435,7 +447,9 @@ customize the savehist group to activate savehist."
       ;; No preexisting shell buffer, or not in a visible window:
       (when (not (get-buffer target-shell-buffer-name))
         (message "Creating new shell buffer '%s'" target-shell-buffer-name))
-      (pop-to-buffer target-shell-buffer-name pop-up-windows))
+      (if here
+          (switch-to-buffer target-shell-buffer-name)
+        (pop-to-buffer target-shell-buffer-name pop-up-windows)))
 
      ;; Buffer exists and already has a window - jump to it:
      (t (if (and multishell-pop-to-frame
@@ -445,7 +459,9 @@ customize the savehist group to activate savehist."
             (select-frame-set-input-focus (window-frame inwin)))
         (if (not (string= (buffer-name (current-buffer))
                           target-shell-buffer-name))
-            (pop-to-buffer target-shell-buffer-name t))))
+            (if here
+                (switch-to-buffer target-shell-buffer-name)
+              (pop-to-buffer target-shell-buffer-name t)))))
 
     ;; We're in the buffer. Activate:
 
@@ -464,6 +480,21 @@ customize the savehist group to activate savehist."
       (and (get-buffer-process from-buffer)
            (goto-char (process-mark (get-buffer-process from-buffer)))))))
 
+(defun multishell-delete-history-name (name &optional ask)
+  "Remove all multishell history entries for NAME.
+
+if optional ask is non-nil (default nil), ask before each deletion.
+
+Return the last entry deleted."
+  (let (got)
+    (dolist (entry (multishell-history-entries name) got)
+      (when (and entry
+                 (or (not ask)
+                     (y-or-n-p (format "Remove multishell history entry `%s'? "
+                                       entry))))
+        (setq got entry
+              multishell-history (delete entry multishell-history))))))
+
 (defun multishell-kill-buffer-query-function ()
   "Offer to remove multishell-history entry for buffer."
   ;; Removal choice is crucial, so users can, eg, kill a shell with huge
@@ -480,14 +511,10 @@ customize the savehist group to activate savehist."
   ;; (Use condition-case to avoid inadvertant disruption of kill-buffer
   ;; activity.  kill-buffer happens behind the scenes a whole lot.)
   (condition-case err
-        (dolist (entry (and (derived-mode-p 'shell-mode)
-                          (multishell-history-entries
-                           (multishell-unbracket-asterisks (buffer-name)))))
-          (when (and entry
-                     (y-or-n-p (format "Remove multishell history entry `%s'? "
-                                       entry)))
-            (setq multishell-history
-                  (delete entry multishell-history))))
+      (and (derived-mode-p 'shell-mode)
+           (multishell-delete-history-name
+            (multishell-unbracket (buffer-name))
+            t))
     (error
      (message "multishell-kill-buffer-query-function error: %s" err)))
   t)
@@ -507,25 +534,39 @@ customize the savehist group to activate savehist."
      nil 'visible)
     nil))
 
-(defun multishell-read-bare-shell-buffer-name (prompt default)
+(defun multishell-all-entries (&optional active-duplicated)
+  "Return multishell history, with active buffers listed first.
+
+Optional ACTIVE-DUPLICATED will return a copy of
+`multishell-history' with unbracketed names of active buffers,
+sans paths, appended to the list, so they have short and long
+completions."
+  ;; Reorder so active buffers are listed first:
+  (let (active-entries active-names historicals splat name path buffer)
+    (dolist (entry multishell-history)
+      (setq splat (multishell-split-entry entry)
+            name (car splat)
+            path (cadr splat)
+            buffer (and name (get-buffer (multishell-bracket name))))
+      (if (and (buffer-live-p buffer)
+               (comint-check-proc buffer))
+          (setq active-entries (push entry active-entries)
+                active-names (push name active-names))
+        (setq historicals (push entry historicals))))
+    (setq multishell-history (append active-entries historicals))
+    (if active-duplicated
+        (append multishell-history active-names)
+      multishell-history)))
+
+(defun multishell-read-unbracketed-entry (prompt default &optional initial)
   "PROMPT for shell buffer name, sans asterisks. Indicate DEFAULT in prompt.
 
-Return the supplied name, if provided, else return nil."
-  (let* ((candidates
-          (append
-           ;; Plain shell buffer names appended with names from name/path hist:
-           (remq nil
-                 (mapcar (lambda (buffer)
-                           (let* ((name (multishell-unbracket-asterisks
-                                         (buffer-name buffer))))
-                             (and (buffer-live-p buffer)
-                                  (with-current-buffer buffer
-                                    ;; Shell mode buffers.
-                                    (and (derived-mode-p 'shell-mode)
-                                         (comint-check-proc (current-buffer))))
-                                  name)))
-                         (buffer-list)))
-           multishell-history))
+Optional INITIAL is preliminary value to be edited.
+
+Input and completion can include associated path, if any.
+
+Return what's provided, if anything, else nil."
+  (let* ((candidates (multishell-all-entries 'active-duplicated))
          (got (completing-read prompt
                                ;; COLLECTION:
                                (reverse candidates)
@@ -534,7 +575,7 @@ Return the supplied name, if provided, else return nil."
                                ;; REQUIRE-MATCH:
                                'confirm
                                ;; INITIAL-INPUT
-                               nil
+                               initial
                                ;; HIST:
                                'multishell-history)))
     (if (not (string= got ""))
@@ -553,32 +594,37 @@ is used.
 Return them as a list (name path), with name asterisk-bracketed
 and path nil if none resolved."
   (let* ((splat (multishell-split-entry (or path-ish "")))
-         (name (car splat))
-         (path (cadr splat)))
-    (if path
-        (if (not name)
-            (setq name
-                  (if (file-remote-p path)
-                      (let ((vec (tramp-dissect-file-name path)))
-                        (or (tramp-file-name-host vec)
-                            (tramp-file-name-domain vec)
-                            (tramp-file-name-localname vec)
-                            system-name))
-                    multishell-primary-name)))
-      ;; No path - get one from history, if present.
-      (when (not name)
-        (setq name multishell-primary-name))
+         (path (cadr splat))
+         (name (or (car splat) (multishell-name-from-entry path))))
+    (when (not path)
+      ;; Get path from history, if present.
       (mapcar #'(lambda (entry)
                   (when (or (not path) (string= path ""))
                     (setq path (cadr (multishell-split-entry entry)))))
               (multishell-history-entries
-               (multishell-unbracket-asterisks name))))
-    (list (multishell-bracket-asterisks name) path)))
+               (multishell-unbracket name))))
+    (list (multishell-bracket name) path)))
+
+(defun multishell-name-from-entry (entry)
+  "Derive a name for a shell buffer according to ENTRY."
+  (if (not entry)
+      (multishell-unbracket multishell-primary-name)
+    (let* ((splat (multishell-split-entry entry))
+           (name (car splat))
+           (path (cadr splat)))
+      (or name
+          (if (file-remote-p path)
+              (let ((vec (tramp-dissect-file-name path)))
+                (or (tramp-file-name-host vec)
+                    (tramp-file-name-domain vec)
+                    (tramp-file-name-localname vec)
+                    system-name))
+            (multishell-unbracket multishell-primary-name))))))
 
 (defun multishell-start-shell-in-buffer (buffer-name path)
   "Start, restart, or continue a shell in BUFFER-NAME on PATH."
   (let* ((buffer (get-buffer buffer-name))
-         is-remote is-active)
+         is-active)
 
     (set-buffer buffer)
     (setq is-active (comint-check-proc buffer))
@@ -591,7 +637,7 @@ and path nil if none resolved."
          (tramp-dissect-file-name default-directory 'noexpand)
          'keep-debug 'keep-password))
 
-      (message "Connecting to %s" path)
+      (when (file-remote-p path) (message "Connecting to %s" path))
       (cd path))
 
     (shell buffer)))
@@ -647,8 +693,7 @@ and path nil if none resolved."
                            (tramp-dissect-file-name default-directory))
                         default-directory)))
           (when (not (string= curdir (or multishell-was-default-directory "")))
-            (multishell-track-dirchange (multishell-unbracket-asterisks
-                                         (buffer-name))
+            (multishell-track-dirchange (multishell-unbracket (buffer-name))
                                         curdir))
           (setq multishell-was-default-directory curdir)))
     ;; To avoid disruption as a pervasive hook function, swallow all errors:
@@ -667,74 +712,20 @@ Returns nil for empty parts, rather than the empty string."
       (and (string= name "") (setq name nil))
       (and (string= path "") (setq path nil))
       (list name path))))
-(defun multishell-bracket-asterisks (name)
+(defun multishell-bracket (name)
   "Return a copy of name, ensuring it has an asterisk at the beginning and end."
   (if (not (string= (substring name 0 1) "*"))
       (setq name (concat "*" name)))
   (if (not (string= (substring name -1) "*"))
       (setq name (concat name "*")))
   name)
-(defun multishell-unbracket-asterisks (name)
+(defun multishell-unbracket (name)
   "Return a copy of name, removing asterisks, if any, at beginning and end."
   (if (string= (substring name 0 1) "*")
       (setq name (substring name 1)))
   (if (string= (substring name -1) "*")
       (setq name (substring name 0 -1)))
   name)
-
-(defun multishell-list-add-shell ()
-  "Pop to new shell, and refresh the listing buffer."
-  (interactive)
-  (multishell-pop-to-shell '(4))
-  (tabulated-list-revert))
-
-(defun multishell-list-remove ()
-  "Remove current environment variable value."
-  (interactive)
-  (let ((current-prefix-arg t))
-    (multishell-list-setenv)))
-
-(defun multishell-list-setenv ()
-  "Edit the value of current shell entry."
-  (interactive)
-;;  (let ((name (tabulated-list-get-id)))
-  (let* ((name "shell")
-         (path (or (cadr (multishell-history-entries name)) "")))
-    (minibuffer-with-setup-hook
-        (lambda () (insert (concat name path)))
-      (call-interactively 'multishell-register-name-to-path))
-    (tabulated-list-revert)))
-
-(defun multishell-list-entries ()
-  "Generate multishell name/path entries list for tabulated-list."
-  (mapcar #'(lambda (entry)
-            (multishell-split-entry entry))
-          multishell-history)
-
-(define-derived-mode multishell-list-mode
-    tabulated-list-mode "Shells"
-  "Major mode for listing current and historically registered shells..
-\\{multishell-list-mode-map\}"
-  (setq tabulated-list-format [("Name" 15 t)
-                               ("Path" 60 t)]
-        tabulated-list-sort-key (cons "Name" nil)
-        tabulated-list-padding 2
-        tabulated-list-entries #'multishell-list-entries)
-  (tabulated-list-init-header))
-
-(define-key multishell-list-mode-map (kbd "s") 'multishell-list-add-)
-(define-key multishell-list-mode-map (kbd "a") 'multishell-list-addenv)
-(define-key multishell-list-mode-map (kbd "d") 'multishell-list-clear)
-
-;;;###autoload
-(defun multishell-list ()
-  "List process environment in a tabulated view."
-  (interactive)
-  (let ((buffer (get-buffer-create "*Process-Environment*")))
-    (pop-to-buffer buffer)
-    (multishell-list-mode)
-    (tabulated-list-print)))
-
 
 (provide 'multishell)
 
