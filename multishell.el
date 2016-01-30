@@ -60,15 +60,11 @@
 ;; Change Log:
 ;;
 ;; * 2016-01-30 1.0.10 Ken Manheimer:
-;;   - shake out some initial multishell-list glitches:
-;;     - Delete shell buffer, if present, when deleting an entry.
-;;       (Offer to) delete shell buffer, if present, when deleting an
-;;       entry. Rely on the default active-shell deletion prompting
-;;       for confirmation, supplementing with our own confirmation
-;;       for inactive shell buffers.
+;;   - shake out initial multishell-list glitches:
+;;     - (Offer to) delete shell buffer, if present, when deleting entry.
 ;;     - Set recency (numeric rank) as initial sort field
-;;     - Recompute list on any operation that affects it, and try to
-;;       preserve stability. (Still needs work.)
+;;     - Recompute list on most operations that affect the order, and try to
+;;       preserve stability. (Kludgy solution, needs work.)
 ;; * 2016-01-30 1.0.9 Ken Manheimer:
 ;;   - Add multishell-list for managing the collection of current and
 ;;     history-registered shells: edit, delete, and switch/pop to entries.
@@ -118,6 +114,8 @@
 ;;
 ;; TODO and Known Issues:
 ;;
+;; * Add mouse actions - buttons - to multishell-list entries
+;;   - see buf-menu.el, eg Buffer-menu-mouse-select
 ;; * Resolve multishell-list sort glitches:
 ;;   - Fix config so multishell-list-revert-buffer-kludge is not needed
 ;;   - Make multishell-list-edit-entry in-place, so changed entries recency
@@ -130,7 +128,6 @@
 ;;   - list of (regexp, which - name, path, or both, command)
 ;; * Adapt multishell-list facilities for all-completions
 ;;   - See info on minibuffer-completion-help, display-completion-list
-;;   - implement markup for mouse selection
 ;; * Investigate whether we can recognize and provide for failed hops.
 ;;   - Tramp doesn't provide useful reactions for any hop but the first
 ;;   - Might be stuff we can do to detect and convey failures?

@@ -13,26 +13,26 @@
 (defun multishell-list-open-pop ()
   "Pop to current entry's shell, and refresh the listing buffer."
   (interactive)
-  (let ((start-buffer (current-buffer)))
+  (let ((list-buffer (current-buffer)))
     (multishell-pop-to-shell nil (tabulated-list-get-id))
-    (with-current-buffer start-buffer
+    (with-current-buffer list-buffer
       (revert-buffer))))
 (defun multishell-list-open-as-default ()
   "Pop to current entry's shell, and set as the default shell."
   (interactive)
-  (let ((start-buffer (current-buffer)))
+  (let ((list-buffer (current-buffer)))
     (message "%s <==" (multishell-name-from-entry (tabulated-list-get-id)))
-    (multishell-pop-to-shell '(16) (tabulated-list-get-id)))
-    (with-current-buffer start-buffer
-      (revert-buffer)))
+    (multishell-pop-to-shell '(16) (tabulated-list-get-id))
+    (with-current-buffer list-buffer
+      (revert-buffer))))
 (defun multishell-list-open-here ()
   "Switch to current entry's shell buffer."
   (interactive)
-  (let ((start-buffer (current-buffer)))
-    (multishell-pop-to-shell nil (tabulated-list-get-id) 'here))
-    (with-current-buffer start-buffer
+  (let ((list-buffer (current-buffer)))
+    (multishell-pop-to-shell nil (tabulated-list-get-id) 'here)
+    (with-current-buffer list-buffer
       ;; In case they use switch-to-buffer or whatever to return.
-      (revert-buffer)))
+      (revert-buffer))))
 
 (defun multishell-list-delete ()
   "Remove current shell entry, and prompt for buffer-removal if present.
@@ -40,8 +40,7 @@
 \(We depend on intrinsic confirmation prompts for active buffers,
 supplemented by our own when buffer is inactive.)"
   (interactive)
-  (let* ((where (save-excursion (beginning-of-line) (point)))
-         (entry (tabulated-list-get-id))
+  (let* ((entry (tabulated-list-get-id))
          (name (multishell-name-from-entry entry))
          (name-bracketed (multishell-bracket name))
          (buffer (get-buffer name-bracketed)))
@@ -51,8 +50,7 @@ supplemented by our own when buffer is inactive.)"
            (or (comint-check-proc (current-buffer))
                (y-or-n-p (format "Kill buffer %s? " name-bracketed)))
            (kill-buffer name-bracketed)))
-    (revert-buffer)
-    (goto-char where)))
+    (tabulated-list-delete-entry)))
 
 (defun multishell-list-edit-entry ()
   "Edit the value of current shell entry."
@@ -82,6 +80,10 @@ supplemented by our own when buffer is inactive.)"
   (if (or (not value) (string= value ""))
       default
     value))
+(defconst multishell-list-active-buffer-flag "+")
+(defconst multishell-list-inactive-buffer-flag ".")
+(defconst multishell-list-absent-buffer-flag "x")
+
 (defun multishell-list-entries ()
   "Generate multishell name/path entries list for tabulated-list."
   (let ((recency 0))
@@ -92,9 +94,11 @@ supplemented by our own when buffer is inactive.)"
                        (buffer (and name
                                     (get-buffer
                                      (multishell-bracket name))))
-                       (status (cond ((not buffer) "x")
-                                     ((comint-check-proc buffer) "+")
-                                     (t ".")))
+                       (status (cond ((not buffer)
+                                      multishell-list-absent-buffer-flag)
+                                     ((comint-check-proc buffer)
+                                      multishell-list-active-buffer-flag)
+                                     (t multishell-list-inactive-buffer-flag)))
                        (rest (cadr splat))
                        (dissected (and rest (file-remote-p rest)
                                        (tramp-dissect-file-name rest t)))
@@ -123,12 +127,12 @@ supplemented by our own when buffer is inactive.)"
 \\{multishell-list-mode-map\}"
   (setq tabulated-list-format
         [;; (name width sort '(:right-align nil :pad-right nil))
-         ("#" 0 compare-strings-as-numbers)
-         ("! " 1 t)
+         ("#" 0 compare-strings-as-numbers :pad-right 1)
+         ("! " 1 t :pad-right 1)
          ("Name" 15 t)
          ("Hops" 30 t)
          ("Path" 30 t)]
-        tabulated-list-sort-key '( "#" . t)
+        tabulated-list-sort-key '("#" . t)
         tabulated-list-entries #'multishell-list-entries)
   (tabulated-list-init-header))
 
@@ -142,8 +146,11 @@ supplemented by our own when buffer is inactive.)"
 (add-hook 'tabulated-list-revert-hook 'multishell-list-revert-buffer-kludge)
 
 (define-key multishell-list-mode-map (kbd "d") 'multishell-list-delete)
+(define-key multishell-list-mode-map (kbd "\C-k") 'multishell-list-delete)
+(define-key multishell-list-mode-map (kbd "k") 'multishell-list-delete)
 (define-key multishell-list-mode-map (kbd "e") 'multishell-list-edit-entry)
 (define-key multishell-list-mode-map (kbd "o") 'multishell-list-open-pop)
+(define-key multishell-list-mode-map (kbd " ") 'multishell-list-open-pop)
 (define-key multishell-list-mode-map (kbd "O") 'multishell-list-open-as-default)
 (define-key multishell-list-mode-map
   (kbd "<return>") 'multishell-list-open-here)
