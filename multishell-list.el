@@ -3,7 +3,7 @@
 ;; Copyright (C) 2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.1.1
+;; Version: 1.1.2
 ;; Created: 2016 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
@@ -63,17 +63,16 @@ supplemented by our own when buffer is inactive.)"
          (revised (multishell-read-unbracketed-entry
                    (format "Edit shell spec for %s: " name)
                    nil
-                   entry))
-         (revised-path (and revised (cadr (multishell-split-entry revised))))
+                   entry
+                   'no-record))
          (revised-name (multishell-name-from-entry revised))
          buffer)
     (when (not (string= revised entry))
-      (multishell-delete-history-name name)
+      (multishell-replace-entry entry revised)
       (when (and (not (string= name revised-name))
                  (setq buffer (get-buffer (multishell-bracket name))))
         (with-current-buffer buffer
           (rename-buffer (multishell-bracket revised-name))))
-      (multishell-register-name-to-path revised-name revised-path)
       (revert-buffer)
       (goto-char where))))
 
@@ -137,15 +136,6 @@ supplemented by our own when buffer is inactive.)"
         tabulated-list-sort-key '("#" . t)
         tabulated-list-entries #'multishell-list-entries)
   (tabulated-list-init-header))
-
-(defvar multishell-list-already-re-reverting nil
-  "Don't set - internal for `multishell-list-revert-buffer-kludge'.")
-(defun multishell-list-revert-buffer-kludge ()
-  "Double revert for kludge workaround of untable sorting."
-  (if (not multishell-list-already-re-reverting)
-      (let ((multishell-list-already-re-reverting t))
-        (revert-buffer))))
-(add-hook 'tabulated-list-revert-hook 'multishell-list-revert-buffer-kludge)
 
 (define-key multishell-list-mode-map (kbd "d") 'multishell-list-delete)
 (define-key multishell-list-mode-map (kbd "\C-k") 'multishell-list-delete)

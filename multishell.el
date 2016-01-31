@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.1.1
+;; Version: 1.1.2
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
@@ -59,6 +59,15 @@
 ;;
 ;; Change Log:
 ;;
+;; * 2016-01-31 1.1.2 Ken Manheimer:
+;;   - Settle puzzling instability of multishell-all-entries
+;;     - The accumulations was putting items going from more to less active
+;;       categories to be put at the end, not beginning.
+;;     - Also, using history for prompting changes history - implement
+;;       no-record option to avoid this when needed.
+;;   - Implement simple edit-in-place multishell-replace-entry and use in
+;;     multishell-list-edit-entry.
+;;   - Remove now (hopefully) unnecessary multishell-list-revert-buffer-kludge.
 ;; * 2016-01-30 1.1.1 Ken Manheimer:
 ;;   - shake out initial multishell-list glitches:
 ;;     - (Offer to) delete shell buffer, if present, when deleting entry.
@@ -143,7 +152,7 @@
 (require 'savehist)
 (require 'multishell-list)
 
-(defvar multishell-version "1.1.1")
+(defvar multishell-version "1.1.2")
 (defun multishell-version (&optional here)
   "Return string describing the loaded multishell version."
   (interactive "P")
@@ -272,6 +281,20 @@ Promote added/changed entry to the front of the list."
     (setq multishell-history (push (concat name path)
                                    multishell-history))))
 
+(defun multishell-replace-entry (entry revised)
+  "Replace every instance of ENTRY in `multishell-history' with REVISED.
+
+Revised entry is situated where former one was.
+
+Returns non-nil iff any changes were made."
+  (let ((candidates multishell-history)
+        did-revisions)
+    (while (setq candidates (member entry candidates))
+      (setcar candidates revised
+              did-revisions t)
+      (setq candidates (cdr candidates)))
+    did-revisions))
+
 (defun multishell-history-entries (name)
   "Return `multishell-history' entry that starts with NAME, or nil if none."
   (let (got)
@@ -295,9 +318,13 @@ historical shells, collectively, using `multishell-list' - see below.
 Customize-group `multishell' to set up a key binding and tweak behaviors.
 
 Manage your collection of current and historical shells by
-recursively invoking \\[multishell-pop-to-shell] at either of the
-`multishell-pop-to-shell' universal argument prompts, or at any time via
-\\[multishell-list]. Hit ? in the listing buffer for editing commands.
+recursively invoking \\[multishell-pop-to-shell] at the
+`multishell-pop-to-shell' universal argument prompts, eg:
+
+  \\[universal-argument] \\[multishell-pop-to-shell] \\[multishell-pop-to-shell]
+
+\(That will be just a few keys if you do the above
+customization.) Hit ? in the listing buffer for editing commands.
 
 ==== Basic operation:
 
@@ -567,20 +594,28 @@ completions."
                     active-names (push name active-names))
             (setq present (push entry present)))
         (setq past (push entry past))))
-    (setq multishell-history (append active-entries present past))
+    ;; Reverse present and past lists
+    (setq multishell-history (append (reverse active-entries)
+                                     (reverse present)
+                                     (reverse past)))
     (if active-duplicated
         (append multishell-history active-names)
       multishell-history)))
 
-(defun multishell-read-unbracketed-entry (prompt default &optional initial)
+(defun multishell-read-unbracketed-entry (prompt default
+                                                 &optional initial no-record)
   "PROMPT for shell buffer name, sans asterisks. Indicate DEFAULT in prompt.
 
 Optional INITIAL is preliminary value to be edited.
 
+Optional NO-RECORD prevents changes to `multishell-history'
+across the activity.
+
 Input and completion can include associated path, if any.
 
 Return what's provided, if anything, else nil."
-  (let* ((candidates (multishell-all-entries 'active-duplicated))
+  (let* ((was-multishell-history multishell-history)
+         (candidates (multishell-all-entries 'active-duplicated))
          (got (completing-read prompt
                                ;; COLLECTION:
                                (reverse candidates)
@@ -592,6 +627,8 @@ Return what's provided, if anything, else nil."
                                initial
                                ;; HIST:
                                'multishell-history)))
+    (when no-record
+      (setq multishell-history was-multishell-history))
     (if (not (string= got ""))
         got
       nil)))
