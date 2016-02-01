@@ -67,7 +67,10 @@
 ;;       no-record option to avoid this when needed.
 ;;   - Implement simple edit-in-place multishell-replace-entry and use in
 ;;     multishell-list-edit-entry.
-;;   - Remove now (hopefully) unnecessary multishell-list-revert-buffer-kludge.
+;;   - Remove now unnecessary multishell-list-revert-buffer-kludge.
+;;   - Rectify byte compiler offenses, and other fixes - thanks to Stefan
+;;     Monnier for pointing out many of the corrections.
+;;   - Avoid directly calling tramp functions unnecessarily.
 ;; * 2016-01-30 1.1.1 Ken Manheimer:
 ;;   - shake out initial multishell-list glitches:
 ;;     - (Offer to) delete shell buffer, if present, when deleting entry.
@@ -230,13 +233,11 @@ current-window behavior.)"
   "Maintain shell's current directory in its multishell history entry.
 
 When set, the history entry for shells started with explicit
-paths will track the shell's current working directory. (Explicit
-paths will not be added to local shells started without one,
-however.)
+paths will track the shell's current working directory.
 
 If `savehist-save-minibuffer-history' is enabled, the current
-working directory of shells \(that were started with an explicit
-path) will be conveyed between emacs sessions."
+working directory of shells will be conveyed between emacs
+sessions."
  :type 'boolean)
 
 (defvar multishell-history nil

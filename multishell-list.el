@@ -75,6 +75,31 @@ supplemented by our own when buffer is inactive.)"
       (revert-buffer)
       (goto-char where))))
 
+(defun multishell-list-clone-entry (&optional arg)
+  "Create a new list entry based on editing the current one.
+
+You will be left in the list at the entry, not yet launched.
+
+Providing a universal argument will also open the new shell.
+
+The already existing current entry is left untouched."
+  (interactive "P")
+  (let* ((prototype (tabulated-list-get-id))
+         (name (multishell-name-from-entry prototype))
+         (new (multishell-read-unbracketed-entry
+               (format "Clone new shell spec from %s: " name)
+               prototype
+               'no-record))
+         (new-name (multishell-name-from-entry new))
+         (new-path (cadr (multishell-split-entry new))))
+    (when (not (string= new prototype))
+      (multishell-register-name-to-path new-name new-path)
+      (revert-buffer)
+      (goto-char (point-min))
+      (re-search-forward (format "^ . \\b%s\\b"
+                                 (regexp-quote new-name)))
+      (beginning-of-line))))
+
 (defun multishell-list-placeholder (value default)
   "Return VALUE if non-empty string, else DEFAULT."
   (if (or (not value) (string= value ""))
@@ -85,7 +110,7 @@ supplemented by our own when buffer is inactive.)"
 (defconst multishell-list-absent-buffer-flag "x")
 
 (defun multishell-list-entries ()
-  "Generate multishell name/path entries list for tabulated-list."
+  "Generate multishell name/path-spec entries list for tabulated-list."
   (let ((recency 0))
     (mapcar #'(lambda (entry)
                 (setq recency (1+ recency))
@@ -100,11 +125,11 @@ supplemented by our own when buffer is inactive.)"
                                       multishell-list-active-buffer-flag)
                                      (t multishell-list-inactive-buffer-flag)))
                        (rest (cadr splat))
-                       (path (or (file-remote-p rest 'localname)
-                                 rest))
+                       (dir (or (file-remote-p rest 'localname)
+                                rest))
                        (hops (and (file-remote-p rest 'localname)
                                   (substring
-                                   rest 0 (- (length rest) (length path))))))
+                                   rest 0 (- (length rest) (length dir))))))
                   (when (not name)
                     (setq name (multishell-name-from-entry entry)))
                   (list entry
@@ -112,7 +137,7 @@ supplemented by our own when buffer is inactive.)"
                                 status
                                 name
                                 (multishell-list-placeholder hops "-")
-                                (multishell-list-placeholder path "~")))))
+                                (multishell-list-placeholder dir "~")))))
             (multishell-all-entries))))
 
 (defun compare-strings-as-numbers (a b)
@@ -122,6 +147,7 @@ supplemented by our own when buffer is inactive.)"
 
 (defvar multishell-list-mode-map
   (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "c") 'multishell-list-clone-entry)
     (define-key map (kbd "d") 'multishell-list-delete)
     (define-key map (kbd "\C-k") 'multishell-list-delete)
     (define-key map (kbd "k") 'multishell-list-delete)
@@ -141,7 +167,7 @@ supplemented by our own when buffer is inactive.)"
          ("! " 1 t :pad-right 1)
          ("Name" 15 t)
          ("Hops" 30 t)
-         ("Path" 30 t)]
+         ("Directory" 30 t)]
         tabulated-list-sort-key '("#" . t)
         tabulated-list-entries #'multishell-list-entries)
   (tabulated-list-init-header))
