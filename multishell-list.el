@@ -62,7 +62,6 @@ supplemented by our own when buffer is inactive.)"
          (name (multishell-name-from-entry entry))
          (revised (multishell-read-unbracketed-entry
                    (format "Edit shell spec for %s: " name)
-                   nil
                    entry
                    'no-record))
          (revised-name (multishell-name-from-entry revised))
@@ -101,11 +100,9 @@ supplemented by our own when buffer is inactive.)"
                                       multishell-list-active-buffer-flag)
                                      (t multishell-list-inactive-buffer-flag)))
                        (rest (cadr splat))
-                       (dissected (and rest (file-remote-p rest)
-                                       (tramp-dissect-file-name rest t)))
-                       (path (or (and dissected (aref dissected 3))
+                       (path (or (file-remote-p rest 'localname)
                                  rest))
-                       (hops (and dissected
+                       (hops (and (file-remote-p rest 'localname)
                                   (substring
                                    rest 0 (- (length rest) (length path))))))
                   (when (not name)
@@ -122,9 +119,21 @@ supplemented by our own when buffer is inactive.)"
   (let ((a (aref (cadr a) 0))
         (b (aref (cadr b) 0)))
     (> (string-to-number a) (string-to-number b))))
+
+(defvar multishell-list-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "d") 'multishell-list-delete)
+    (define-key map (kbd "\C-k") 'multishell-list-delete)
+    (define-key map (kbd "k") 'multishell-list-delete)
+    (define-key map (kbd "e") 'multishell-list-edit-entry)
+    (define-key map (kbd "o") 'multishell-list-open-pop)
+    (define-key map (kbd " ") 'multishell-list-open-pop)
+    (define-key map (kbd "O") 'multishell-list-open-as-default)
+    (define-key map (kbd "RET") 'multishell-list-open-here)
+    map))
 (define-derived-mode multishell-list-mode
     tabulated-list-mode "Shells"
-  "Major mode for listing current and historically registered shells..
+  "Major mode for listing current and historically registered shells.
 \\{multishell-list-mode-map\}"
   (setq tabulated-list-format
         [;; (name width sort '(:right-align nil :pad-right nil))
@@ -136,16 +145,6 @@ supplemented by our own when buffer is inactive.)"
         tabulated-list-sort-key '("#" . t)
         tabulated-list-entries #'multishell-list-entries)
   (tabulated-list-init-header))
-
-(define-key multishell-list-mode-map (kbd "d") 'multishell-list-delete)
-(define-key multishell-list-mode-map (kbd "\C-k") 'multishell-list-delete)
-(define-key multishell-list-mode-map (kbd "k") 'multishell-list-delete)
-(define-key multishell-list-mode-map (kbd "e") 'multishell-list-edit-entry)
-(define-key multishell-list-mode-map (kbd "o") 'multishell-list-open-pop)
-(define-key multishell-list-mode-map (kbd " ") 'multishell-list-open-pop)
-(define-key multishell-list-mode-map (kbd "O") 'multishell-list-open-as-default)
-(define-key multishell-list-mode-map
-  (kbd "<return>") 'multishell-list-open-here)
 
 ;;;###autoload
 (defun multishell-list ()
