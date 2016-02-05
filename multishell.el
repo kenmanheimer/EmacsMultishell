@@ -677,7 +677,8 @@ and path nil if none is resolved."
     (when (and path (not is-active))
 
       (when (and (derived-mode-p 'shell-mode) (file-remote-p path))
-        ;; Returning to disconnected remote shell - tidy up:
+        ;; Returning to disconnected remote shell - do some tidying.
+        ;; (Prevents the "Args out of range" failure when reconnecting.)
         (tramp-cleanup-connection
          (tramp-dissect-file-name default-directory 'noexpand)
          'keep-debug 'keep-password))
