@@ -12,6 +12,15 @@
 
 (require 'tabulated-list)
 
+(defgroup multishell-list nil
+  "Show a menu of all shell buffers in a buffer."
+  :group 'multishell)
+
+(defface multishell-list-name
+  '((t (:weight bold)))
+  "Face for shell names in the Multishell List."
+  :group 'multishell-list)
+
 (defun multishell-list-open-pop (&optional arg)
   "Pop to current entry's shell in separate window.
 
@@ -26,15 +35,20 @@ pop to the buffer but don't change its run state."
          (multishell-bracket (multishell-name-from-entry entry)))
       (multishell-pop-to-shell nil entry))
     (with-current-buffer list-buffer
-      (revert-buffer))))
+      (revert-buffer)
+      (multishell-list-goto-item-by-entry entry))))
+
 (defun multishell-list-open-as-default ()
   "Pop to current entry's shell, and set as the default shell."
   (interactive)
-  (let ((list-buffer (current-buffer)))
-    (message "%s <==" (multishell-name-from-entry (tabulated-list-get-id)))
-    (multishell-pop-to-shell '(16) (tabulated-list-get-id))
+  (let ((list-buffer (current-buffer))
+        (entry (tabulated-list-get-id)))
+    (message "%s <==" (multishell-name-from-entry entry))
+    (multishell-pop-to-shell '(16) entry)
     (with-current-buffer list-buffer
-      (revert-buffer))))
+      (revert-buffer)
+      (multishell-list-goto-item-by-entry entry))))
+
 (defun multishell-list-open-here (&optional arg)
   "Switch to current entry's shell buffer.
 
@@ -75,8 +89,7 @@ submitting the entry will pop to the shell in a new window,
 starting it if it's not already going."
 
   (interactive "P")
-  (let* ((where (save-excursion (beginning-of-line) (point)))
-         (list-buffer (current-buffer))
+  (let* ((list-buffer (current-buffer))
          (entry (tabulated-list-get-id))
          (name (multishell-name-from-entry entry))
          (revised (multishell-read-unbracketed-entry
@@ -95,7 +108,7 @@ starting it if it's not already going."
       (multishell-pop-to-shell nil revised-name))
     (with-current-buffer list-buffer
       (revert-buffer)
-      (goto-char where))))
+      (multishell-list-goto-item-by-entry revised))))
 
 (defun multishell-list-clone-entry (&optional arg)
   "Create a new list entry, edited from the current one, ready to launch.
@@ -155,7 +168,7 @@ The already existing original entry is left untouched."
                   (list entry
                         (vector (format "%d" recency)
                                 status
-                                name
+                                (multishell-list--decorate-name name)
                                 (multishell-list-placeholder hops "-")
                                 (multishell-list-placeholder dir "~")))))
             (multishell-all-entries))))
@@ -167,13 +180,26 @@ The already existing original entry is left untouched."
               (not (string= (tabulated-list-get-id) entry)))
     (forward-line 1)))
 
-(defun compare-strings-as-numbers (a b)
+(defun multishell-collate-row-strings-as-numbers (a b)
   (let ((a (aref (cadr a) 0))
         (b (aref (cadr b) 0)))
     (> (string-to-number a) (string-to-number b))))
 
+(defun multishell-list--decorate-name (name)
+  (propertize name
+              'font-lock-face 'multishell-list-name
+              'mouse-face 'highlight))
+
+(defun multishell-list-mouse-select (event)
+  "Select the shell whose line is clicked."
+  (interactive "e")
+  (select-window (posn-window (event-end event)))
+  (let ((entry (tabulated-list-get-id (posn-point (event-end event)))))
+    (multishell-pop-to-shell nil entry 'here)))
+
 (defvar multishell-list-mode-map
   (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map tabulated-list-mode-map)
     (define-key map (kbd "c") 'multishell-list-clone-entry)
     (define-key map (kbd "d") 'multishell-list-delete)
     (define-key map (kbd "\C-k") 'multishell-list-delete)
@@ -183,6 +209,8 @@ The already existing original entry is left untouched."
     (define-key map (kbd " ") 'multishell-list-open-pop)
     (define-key map (kbd "O") 'multishell-list-open-as-default)
     (define-key map (kbd "RET") 'multishell-list-open-here)
+    (define-key map [mouse-2] 'multishell-list-mouse-select)
+    (define-key map [follow-link] 'mouse-face)
     map))
 (define-derived-mode multishell-list-mode
     tabulated-list-mode "Shells"
@@ -197,7 +225,7 @@ Initial sort is from most to least recently used:
 \\{multishell-list-mode-map\}"
   (setq tabulated-list-format
         [;; (name width sort '(:right-align nil :pad-right nil))
-         ("#" 0 compare-strings-as-numbers :pad-right 1)
+         ("#" 0 multishell-collate-row-strings-as-numbers :pad-right 1)
          ("! " 1 t :pad-right 1)
          ("Name" 15 t)
          ("Hops" 30 t)
@@ -216,10 +244,15 @@ You can get to this shell listing manager by
 recursively invoking \\[multishell-pop-to-shell] at either of the
 `multishell-pop-to-shell' universal argument prompts."
   (interactive)
-  (let ((buffer (get-buffer-create "*Shells*")))
+  (let ((from-entry (car (multishell-history-entries
+                          (multishell-unbracket (buffer-name
+                                                 (current-buffer))))))
+        (buffer (get-buffer-create "*Shells*")))
     (pop-to-buffer buffer)
     (multishell-list-mode)
-    (tabulated-list-print)))
+    (tabulated-list-print)
+    (when from-entry
+      (multishell-list-goto-item-by-entry from-entry))))
 
 (provide 'multishell-list)
 (require 'multishell)
