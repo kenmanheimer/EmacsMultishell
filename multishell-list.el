@@ -158,9 +158,10 @@ The already existing original entry is left untouched."
                                       multishell-list-active-flag)
                                      (t multishell-list-inactive-flag)))
                        (rest (cadr splat))
-                       (dir (or (file-remote-p rest 'localname)
+                       (dir (or (file-remote-p (or rest "") 'localname)
                                 rest))
-                       (hops (and (file-remote-p rest 'localname)
+                       (hops (and dir
+                                  (file-remote-p rest 'localname)
                                   (substring
                                    rest 0 (- (length rest) (length dir))))))
                   (when (not name)
@@ -235,7 +236,7 @@ Initial sort is from most to least recently used:
   (tabulated-list-init-header))
 
 ;;;###autoload
-(defun multishell-list ()
+(defun multishell-list (&optional buffer-name)
   "Edit your current and historic list of shell buffers.
 
 Hit ? for a list of commands.
@@ -247,8 +248,10 @@ recursively invoking \\[multishell-pop-to-shell] at either of the
   (let ((from-entry (car (multishell-history-entries
                           (multishell-unbracket (buffer-name
                                                  (current-buffer))))))
-        (buffer (get-buffer-create "*Shells*")))
-    (pop-to-buffer buffer)
+        (buffer (get-buffer-create (or buffer-name "*Shells*"))))
+    (if buffer-name
+        (set-buffer buffer)
+      (pop-to-buffer buffer))
     (multishell-list-mode)
     (tabulated-list-print)
     (when from-entry
@@ -258,3 +261,4 @@ recursively invoking \\[multishell-pop-to-shell] at either of the
 (require 'multishell)
 
 ;;; multishell-list.el ends here
+o

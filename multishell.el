@@ -625,13 +625,12 @@ completions."
   (minibuffer-complete-word))
 
 (defun multishell-display-completion-list (completions)
-  (let* ((completions-extracted
-          (mapcar #'(lambda (text)
-                      (set-text-properties 0 (length text) nil text)
-                      text)
-                  completions))
-         (multishell-history completions-extracted))
-    (multishell-list-mode)))
+  "Present COMPLETIONS using multishell-list for `display-completion-list'.
+
+This currently doesn't work, because `tabulated-list-mode' isn't
+meant for transient buffers."
+  (let ((multishell-history (mapcar 'substring-no-properties completions)))
+    (multishell-list "*Completions*")))
 
 (defun multishell-read-unbracketed-entry (prompt &optional initial no-record)
   "PROMPT for shell buffer name, sans asterisks.
@@ -646,7 +645,6 @@ Input and completion can include associated path, if any.
 Return what's provided, if anything, else nil."
   (let* ((was-multishell-history multishell-history)
          (candidates (multishell-all-entries 'active-duplicated))
-;;         (minibuffer-local-must-match-map multishell-local-must-match-map)
          (got (flet ((display-completion-list
                       (completions)
                       (multishell-display-completion-list completions)))
