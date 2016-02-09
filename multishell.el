@@ -603,6 +603,36 @@ completions."
         (append multishell-history active-names)
       multishell-history)))
 
+(defvar multishell-local-must-match-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map minibuffer-local-must-match-map)
+    (define-key map (kbd "?") 'multishell-minibuffer-completion-help)
+    (define-key map (kbd " ") 'multishell-minibuffer-complete-word)
+    (define-key map [tab] 'multishell-read-minibuffer-complete)
+    map))
+
+(defun multishell-minibuffer-completion-help (&optional start end)
+  "Multishell version of `minibuffer-completion-help'."
+  (interactive)
+  ;; Call all-completions on minibuffer-completion-table and
+  ;; minibuffer-completion-predicate
+  ;; Display using (with-output-to-temp-buffer "*Completions*"
+  ;; ... <multishell-list stuff>)
+  (minibuffer-completion-help start end))
+(defun multishell-minibuffer-complete-word ()
+  "Multishell version of `minibuffer-completion-help'."
+  (interactive)
+  (minibuffer-complete-word))
+
+(defun multishell-display-completion-list (completions)
+  (let* ((completions-extracted
+          (mapcar #'(lambda (text)
+                      (set-text-properties 0 (length text) nil text)
+                      text)
+                  completions))
+         (multishell-history completions-extracted))
+    (multishell-list-mode)))
+
 (defun multishell-read-unbracketed-entry (prompt &optional initial no-record)
   "PROMPT for shell buffer name, sans asterisks.
 
@@ -616,17 +646,21 @@ Input and completion can include associated path, if any.
 Return what's provided, if anything, else nil."
   (let* ((was-multishell-history multishell-history)
          (candidates (multishell-all-entries 'active-duplicated))
-         (got (completing-read prompt
-                               ;; COLLECTION:
-                               (reverse candidates)
-                               ;; PREDICATE:
-                               nil
-                               ;; REQUIRE-MATCH:
-                               'confirm
-                               ;; INITIAL-INPUT
-                               initial
-                               ;; HIST:
-                               'multishell-history)))
+;;         (minibuffer-local-must-match-map multishell-local-must-match-map)
+         (got (flet ((display-completion-list
+                      (completions)
+                      (multishell-display-completion-list completions)))
+                (completing-read prompt
+                                 ;; COLLECTION:
+                                 (reverse candidates)
+                                 ;; PREDICATE:
+                                 nil
+                                 ;; REQUIRE-MATCH:
+                                 'confirm
+                                 ;; INITIAL-INPUT
+                                 initial
+                                 ;; HIST:
+                                 'multishell-history))))
     (when no-record
       (setq multishell-history was-multishell-history))
     (if (not (string= got ""))
