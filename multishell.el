@@ -596,6 +596,21 @@ completions."
         (append multishell-history active-names)
       multishell-history)))
 
+(defun multishell-completion (str pred flag)
+  (let ((candidates (reverse (multishell-all-entries 'active-duplicated))))
+    (cond ((null flag)
+           (try-completion str candidates pred))
+          ((eq flag t)
+           (all-completions str candidates pred))
+          ((eq flag 'lambda)
+           (test-completion str candidates pred))
+          ((and (listp flag) (eq (car flag) 'boundaries))
+           (completion-boundaries str candidates pred (cdr flag)))
+          ((eq flag 'metadata)
+           '(metadata . (display-sort-function . #'(lambda (completions)
+                                                     completions))))
+          )))
+
 (defun multishell-read-unbracketed-entry (prompt &optional initial no-record)
   "PROMPT for shell buffer name, sans asterisks.
 
@@ -611,7 +626,7 @@ Return what's provided, if anything, else nil."
          (candidates (multishell-all-entries 'active-duplicated))
          (got (completing-read prompt
                                ;; COLLECTION:
-                               (reverse candidates)
+                               'multishell-completion
                                ;; PREDICATE:
                                nil
                                ;; REQUIRE-MATCH:
