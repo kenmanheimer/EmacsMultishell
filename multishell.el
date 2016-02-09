@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc.
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.1.2
+;; Version: 1.1.3
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
@@ -59,6 +59,13 @@
 ;;
 ;; Change Log:
 ;;
+;; * 2016-02-09 1.1.3 Ken Manheimer:
+;;   multishell-list:
+;;   - add some handy operations, like cloning new entry from existing
+;;   - add optional behaviors to existing operations for returning to
+;;     stopped shells without restarting them.
+;;   - solidify maintaining focus on current entry
+;;   - fix miscellaneous.
 ;; * 2016-01-31 1.1.2 Ken Manheimer:
 ;;   - Settle puzzling instability of multishell-all-entries
 ;;     - The accumulations was putting items going from more to less active
@@ -155,7 +162,7 @@
 (require 'savehist)
 (require 'multishell-list)
 
-(defvar multishell-version "1.1.2")
+(defvar multishell-version "1.1.3")
 (defun multishell-version (&optional here)
   "Return string describing the loaded multishell version."
   (interactive "P")
