@@ -1,9 +1,9 @@
-;;; multishell.el --- facilitate multiple local and remote shell buffers
+;;; multishell.el --- Easily use multiple shell buffers, local and remote.
 
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc.
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.1.3
+;; Version: 1.1.4
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
@@ -59,6 +59,8 @@
 ;;
 ;; Change Log:
 ;;
+;; * 2016-02-10 1.1.4 Ken Manheimer:
+;;   - hookup multishell-list as completion help buffer.
 ;; * 2016-02-09 1.1.3 Ken Manheimer:
 ;;   multishell-list:
 ;;   - add some handy operations, like cloning new entry from existing
@@ -603,32 +605,8 @@ completions."
         (append multishell-history active-names)
       multishell-history)))
 
-(defvar multishell-local-must-match-map
-  (let ((map (make-sparse-keymap)))
-    (set-keymap-parent map minibuffer-local-must-match-map)
-    (define-key map (kbd "?") 'multishell-minibuffer-completion-help)
-    (define-key map (kbd " ") 'multishell-minibuffer-complete-word)
-    (define-key map [tab] 'multishell-read-minibuffer-complete)
-    map))
-
-(defun multishell-minibuffer-completion-help (&optional start end)
-  "Multishell version of `minibuffer-completion-help'."
-  (interactive)
-  ;; Call all-completions on minibuffer-completion-table and
-  ;; minibuffer-completion-predicate
-  ;; Display using (with-output-to-temp-buffer "*Completions*"
-  ;; ... <multishell-list stuff>)
-  (minibuffer-completion-help start end))
-(defun multishell-minibuffer-complete-word ()
-  "Multishell version of `minibuffer-completion-help'."
-  (interactive)
-  (minibuffer-complete-word))
-
 (defun multishell-display-completion-list (completions)
-  "Present COMPLETIONS using multishell-list for `display-completion-list'.
-
-This currently doesn't work, because `tabulated-list-mode' isn't
-meant for transient buffers."
+  "Present COMPLETIONS using multishell-list for `display-completion-list'."
   (let ((multishell-history (mapcar 'substring-no-properties completions)))
     (multishell-list "*Completions*")))
 
@@ -645,9 +623,12 @@ Input and completion can include associated path, if any.
 Return what's provided, if anything, else nil."
   (let* ((was-multishell-history multishell-history)
          (candidates (multishell-all-entries 'active-duplicated))
-         (got (flet ((display-completion-list
-                      (completions)
-                      (multishell-display-completion-list completions)))
+         (got (cl-letf
+                  ;; Engage our custom display-completion-list, for
+                  ;; minibuffer-completion-help. `cl-letf' for dynamic
+                  ;; binding; cl-flet's lexical doesn't do what's needed.
+                  (((symbol-function 'display-completion-list)
+                    #'multishell-display-completion-list))
                 (completing-read prompt
                                  ;; COLLECTION:
                                  (reverse candidates)

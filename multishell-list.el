@@ -158,8 +158,8 @@ The already existing original entry is left untouched."
                                       multishell-list-active-flag)
                                      (t multishell-list-inactive-flag)))
                        (rest (cadr splat))
-                       (dir (or (file-remote-p (or rest "") 'localname)
-                                rest))
+                       (dir (and rest (or (file-remote-p rest 'localname)
+                                          rest)))
                        (hops (and dir
                                   (file-remote-p rest 'localname)
                                   (substring
@@ -239,11 +239,15 @@ Initial sort is from most to least recently used:
 (defun multishell-list (&optional buffer-name)
   "Edit your current and historic list of shell buffers.
 
-Hit ? for a list of commands.
+Optional BUFFER-NAME specifies buffer to use for list. When a
+buffer is specified, we do not select the buffer, just fill
+it. Otherwise, we pop to the *Shells* buffer.
 
-You can get to this shell listing manager by
-recursively invoking \\[multishell-pop-to-shell] at either of the
-`multishell-pop-to-shell' universal argument prompts."
+In the buffer, hit ? or h for a list of commands.
+
+You can get to the shell listing manager by recursively invoking
+\\[multishell-pop-to-shell] at the `multishell-pop-to-shell'
+`universal-argument' prompts."
   (interactive)
   (let ((from-entry (car (multishell-history-entries
                           (multishell-unbracket (buffer-name
@@ -261,4 +265,3 @@ recursively invoking \\[multishell-pop-to-shell] at either of the
 (require 'multishell)
 
 ;;; multishell-list.el ends here
-o
