@@ -269,6 +269,10 @@ one emacs session to be resumed at the next, customize
 `savehist-additional-variables' to include the
 `multishell-primary-name'.")
 
+(defvar multishell-completing nil
+  "Internal use, conveying whether or not we're in the midst of a multishell
+completing-read.")
+
 ;; Multiple entries happen because completion also adds name to history.
 (defun multishell-register-name-to-path (name path)
   "Add or replace entry associating NAME with PATH in `multishell-history'.
@@ -430,11 +434,12 @@ customize the savehist group to activate savehist."
 
   (let ((token '(token)))
     (if (window-minibuffer-p)
-        (throw 'multishell-do-list token)
-      (if (equal token
-                 (catch 'multishell-do-list
-                   (multishell-pop-to-shell-worker arg name here)))
-          (multishell-list)))))
+        (throw 'multishell-minibuffer-exit token)
+      (let ((got (catch 'multishell-minibuffer-exit
+                   (multishell-pop-to-shell-worker arg name here))))
+        (if (equal token got)
+            (multishell-list)
+          (multishell-pop-to-shell-worker nil got here))))))
 
 (defun multishell-pop-to-shell-worker (&optional arg name here)
   "Do real work of `multishell-pop-to-shell', which see."
@@ -605,11 +610,6 @@ completions."
         (append multishell-history active-names)
       multishell-history)))
 
-(defun multishell-display-completion-list (completions)
-  "Present COMPLETIONS using multishell-list for `display-completion-list'."
-  (let ((multishell-history (mapcar 'substring-no-properties completions)))
-    (multishell-list "*Completions*")))
-
 (defun multishell-read-unbracketed-entry (prompt &optional initial no-record)
   "PROMPT for shell buffer name, sans asterisks.
 
@@ -628,18 +628,19 @@ Return what's provided, if anything, else nil."
                   ;; minibuffer-completion-help. `cl-letf' for dynamic
                   ;; binding; cl-flet's lexical doesn't do what's needed.
                   (((symbol-function 'display-completion-list)
-                    #'multishell-display-completion-list))
-                (completing-read prompt
-                                 ;; COLLECTION:
-                                 (reverse candidates)
-                                 ;; PREDICATE:
-                                 nil
-                                 ;; REQUIRE-MATCH:
-                                 'confirm
-                                 ;; INITIAL-INPUT
-                                 initial
-                                 ;; HIST:
-                                 'multishell-history))))
+                    #'multishell-list))
+                (let ((multishell-completing t))
+                  (completing-read prompt
+                                   ;; COLLECTION:
+                                   (reverse candidates)
+                                   ;; PREDICATE:
+                                   nil
+                                   ;; REQUIRE-MATCH:
+                                   'confirm
+                                   ;; INITIAL-INPUT
+                                   initial
+                                   ;; HIST:
+                                   'multishell-history)))))
     (when no-record
       (setq multishell-history was-multishell-history))
     (if (not (string= got ""))
@@ -698,7 +699,7 @@ and path nil if none is resolved."
 
       (when (and (derived-mode-p 'shell-mode) (file-remote-p path))
         ;; Returning to disconnected remote shell - do some tidying.
-        ;; (Prevents the "Args out of range" failure when reconnecting.)
+        ;; Prevents an "Args out of range" failure when reconnecting.
         (tramp-cleanup-connection
          (tramp-dissect-file-name default-directory 'noexpand)
          'keep-debug 'keep-password))

@@ -33,7 +33,7 @@ pop to the buffer but don't change its run state."
     (if arg
         (pop-to-buffer
          (multishell-bracket (multishell-name-from-entry entry)))
-      (multishell-pop-to-shell nil entry))
+      (multishell-list-selected entry t))
     (with-current-buffer list-buffer
       (revert-buffer)
       (multishell-list-goto-item-by-entry entry))))
@@ -44,7 +44,7 @@ pop to the buffer but don't change its run state."
   (let ((list-buffer (current-buffer))
         (entry (tabulated-list-get-id)))
     (message "%s <==" (multishell-name-from-entry entry))
-    (multishell-pop-to-shell '(16) entry)
+    (multishell-list-selected entry t t)
     (with-current-buffer list-buffer
       (revert-buffer)
       (multishell-list-goto-item-by-entry entry))))
@@ -61,7 +61,7 @@ switch to the buffer but don't activate (or deactivate) it it."
     (if arg
         (switch-to-buffer
          (multishell-bracket (multishell-name-from-entry entry)))
-      (multishell-pop-to-shell nil entry 'here))
+      (multishell-list-selected entry nil))
     (with-current-buffer list-buffer
       (revert-buffer))))
 
@@ -105,7 +105,7 @@ starting it if it's not already going."
         (with-current-buffer buffer
           (rename-buffer (multishell-bracket revised-name)))))
     (when arg
-      (multishell-pop-to-shell nil revised-name))
+      (multishell-list-selected revised-name t))
     (with-current-buffer list-buffer
       (revert-buffer)
       (multishell-list-goto-item-by-entry revised))))
@@ -131,7 +131,24 @@ The already existing original entry is left untouched."
       (revert-buffer)
       (multishell-list-goto-item-by-entry new)
       (when arg
-        (multishell-pop-to-shell nil new-name)))))
+        (multishell-list-selected new-name t)))))
+
+(defun multishell-list-mouse-select (event)
+  "Select the shell whose line is clicked."
+  (interactive "e")
+  (select-window (posn-window (event-end event)))
+  (let ((entry (tabulated-list-get-id (posn-point (event-end event)))))
+    (multishell-list-selected entry nil)))
+
+(defun multishell-list-selected (entry pop &optional set-primary)
+  "Select multishell ENTRY, popping to window if POP is non-nil.
+
+Optional arg SET-PRIMARY non-nil sets `multishell-primary-name' to entry.
+
+Provide for concluding minibuffer interaction if we're in completing mode."
+  (if multishell-completing
+        (throw 'multishell-minibuffer-exit entry)
+      (multishell-pop-to-shell (and set-primary '(16)) entry (not pop))))
 
 (defun multishell-list-placeholder (value default)
   "Return VALUE if non-empty string, else DEFAULT."
@@ -191,13 +208,6 @@ The already existing original entry is left untouched."
               'font-lock-face 'multishell-list-name
               'mouse-face 'highlight))
 
-(defun multishell-list-mouse-select (event)
-  "Select the shell whose line is clicked."
-  (interactive "e")
-  (select-window (posn-window (event-end event)))
-  (let ((entry (tabulated-list-get-id (posn-point (event-end event)))))
-    (multishell-pop-to-shell nil entry 'here)))
-
 (defvar multishell-list-mode-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map tabulated-list-mode-map)
@@ -236,28 +246,44 @@ Initial sort is from most to least recently used:
   (tabulated-list-init-header))
 
 ;;;###autoload
-(defun multishell-list (&optional buffer-name)
+(defun multishell-list (&optional completing)
   "Edit your current and historic list of shell buffers.
 
-Optional BUFFER-NAME specifies buffer to use for list. When a
-buffer is specified, we do not select the buffer, just fill
-it. Otherwise, we pop to the *Shells* buffer.
+If optional COMPLETING is nil, we present the full
+`multishell-history' list in a popped buffer named '*Shells*'.
 
 In the buffer, hit ? or h for a list of commands.
 
-You can get to the shell listing manager by recursively invoking
+When optional COMPLETING is non-nil, it must be a list of
+multishell-history completion candidate entries, as provided by
+`completing-read'. Then we present the list as a part of
+minibuffer completion.
+
+You can get to the shells listing by recursively invoking
 \\[multishell-pop-to-shell] at the `multishell-pop-to-shell'
 `universal-argument' prompts."
   (interactive)
   (let ((from-entry (car (multishell-history-entries
                           (multishell-unbracket (buffer-name
                                                  (current-buffer))))))
-        (buffer (get-buffer-create (or buffer-name "*Shells*"))))
-    (if buffer-name
+        (buffer (get-buffer-create (if completing
+                                       "*Completions*"
+                                     "*Shells*"))))
+    (if completing
         (set-buffer buffer)
       (pop-to-buffer buffer))
     (multishell-list-mode)
-    (tabulated-list-print)
+    (progv
+        ;; Temporarily assign multishell-history only when completing:
+        (when completing '(multishell-history))
+        (when completing (list (mapcar 'substring-no-properties completing)))
+      (tabulated-list-print))
+    (when completing
+      ;; XXX Do proper completion prep.
+      ;; - looks like stuff in minibuffer.el.gz is too hairy w/too little gain.
+      ;; - Add a buffer-change hook that throws a 'multishell-completion-done,
+      ;;   and revise the catch in multishell-pop-to-shell
+      )
     (when from-entry
       (multishell-list-goto-item-by-entry from-entry))))
 
