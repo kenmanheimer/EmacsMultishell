@@ -706,7 +706,11 @@ and path nil if none is resolved."
 
       (when (and (derived-mode-p 'shell-mode) (file-remote-p path))
         ;; Returning to disconnected remote shell - do some tidying.
-        ;; Prevents an "Args out of range" failure when reconnecting.
+        ;; Without this cleanup, occasionally restarting a disconnected
+        ;; remote session, particularly one that includes sudo, results in
+        ;; an untraceable "Args out of range" error. That never happens if
+        ;; we precedeed connection attempts with this cleanup -
+        ;; prophylactic.
         (tramp-cleanup-connection
          (tramp-dissect-file-name default-directory 'noexpand)
          'keep-debug 'keep-password))
