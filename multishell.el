@@ -59,8 +59,10 @@
 ;;
 ;; Change Log:
 ;;
-;; * 2016-02-10 1.1.4 Ken Manheimer:
+;; * 2016-02-11 1.1.4 Ken Manheimer:
 ;;   - hookup multishell-list as completion help buffer.
+;;     Mouse and keyboard selections from help listing properly exits
+;;     minibuffer.
 ;; * 2016-02-09 1.1.3 Ken Manheimer:
 ;;   multishell-list:
 ;;   - add some handy operations, like cloning new entry from existing
@@ -136,20 +138,10 @@
 ;;
 ;; TODO and Known Issues:
 ;;
-;; * Add mouse actions - buttons - to multishell-list entries
-;;   - see buf-menu.el, eg Buffer-menu-mouse-select
-;; * Resolve multishell-list sort glitches:
-;;   - Fix config so multishell-list-revert-buffer-kludge is not needed
-;;   - Make multishell-list-edit-entry in-place, so changed entries recency
-;;     doesn't change.
-;;   - Fill in kill-buffer prompting gaps, eg if default live-process
-;;     prompts are inhibited.
 ;; * Add custom shell launch prep actions
 ;;   - for, eg, port knocking, interface activations
 ;;   - shell commands to execute when shell name or path matches a regexp
 ;;   - list of (regexp, which - name, path, or both, command)
-;; * Adapt multishell-list facilities for all-completions
-;;   - See info on minibuffer-completion-help, display-completion-list
 ;; * Investigate whether we can recognize and provide for failed hops.
 ;;   - Tramp doesn't provide useful reactions for any hop but the first
 ;;   - Might be stuff we can do to detect and convey failures?
