@@ -3,7 +3,7 @@
 ;; Copyright (C) 2016 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.1.4
+;; Version: 1.1.5
 ;; Created: 2016 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
@@ -252,15 +252,18 @@ Initial sort is from most to least recently used:
 
 For duplicates, we prefer the ones that have paths."
   (let ((tally (make-hash-table :test #'equal))
-        got name already)
+        got name name-order-reversed already)
     (mapcar #'(lambda (entry)
                 (setq name (multishell-name-from-entry entry)
                       already (gethash name tally nil))
+                (when (not already)
+                  (push name name-order-reversed))
                 (when (or (not already) (< (length already) (length entry)))
                   ;; Add new or replace shorter prior entry for name:
                   (puthash name entry tally)))
             entries)
-    (maphash #'(lambda (key value) (push value got)) tally)
+    (dolist (name name-order-reversed)
+      (push (gethash name tally) got))
     got))
 
 ;;;###autoload
