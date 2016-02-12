@@ -33,7 +33,7 @@ pop to the buffer but don't change its run state."
     (if arg
         (pop-to-buffer
          (multishell-bracket (multishell-name-from-entry entry)))
-      (multishell-list-selected entry t))
+      (multishell-list-dispatch-selected entry t))
     (with-current-buffer list-buffer
       (revert-buffer)
       (multishell-list-goto-item-by-entry entry))))
@@ -44,7 +44,7 @@ pop to the buffer but don't change its run state."
   (let ((list-buffer (current-buffer))
         (entry (tabulated-list-get-id)))
     (message "%s <==" (multishell-name-from-entry entry))
-    (multishell-list-selected entry t t)
+    (multishell-list-dispatch-selected entry t t)
     (with-current-buffer list-buffer
       (revert-buffer)
       (multishell-list-goto-item-by-entry entry))))
@@ -61,7 +61,7 @@ switch to the buffer but don't activate (or deactivate) it it."
     (if arg
         (switch-to-buffer
          (multishell-bracket (multishell-name-from-entry entry)))
-      (multishell-list-selected entry nil))
+      (multishell-list-dispatch-selected entry nil))
     (with-current-buffer list-buffer
       (revert-buffer))))
 
@@ -105,7 +105,7 @@ starting it if it's not already going."
         (with-current-buffer buffer
           (rename-buffer (multishell-bracket revised-name)))))
     (when arg
-      (multishell-list-selected revised-name t))
+      (multishell-list-dispatch-selected revised-name t))
     (with-current-buffer list-buffer
       (revert-buffer)
       (multishell-list-goto-item-by-entry revised))))
@@ -131,24 +131,26 @@ The already existing original entry is left untouched."
       (revert-buffer)
       (multishell-list-goto-item-by-entry new)
       (when arg
-        (multishell-list-selected new-name t)))))
+        (multishell-list-dispatch-selected new-name t)))))
 
 (defun multishell-list-mouse-select (event)
   "Select the shell whose line is clicked."
   (interactive "e")
   (select-window (posn-window (event-end event)))
   (let ((entry (tabulated-list-get-id (posn-point (event-end event)))))
-    (multishell-list-selected entry nil)))
+    (multishell-list-dispatch-selected entry nil)))
 
-(defun multishell-list-selected (entry pop &optional set-primary)
-  "Select multishell ENTRY, popping to window if POP is non-nil.
+(defun multishell-list-dispatch-selected (entry pop &optional set-primary)
+  "Go to multishell ENTRY, popping to window if POP is non-nil.
 
 Optional arg SET-PRIMARY non-nil sets `multishell-primary-name' to entry.
 
 Provide for concluding minibuffer interaction if we're in completing mode."
-  (if multishell-completing
-        (throw 'multishell-minibuffer-exit entry)
-      (multishell-pop-to-shell (and set-primary '(16)) entry (not pop))))
+  (let ((set-primary-as-arg (and set-primary '(16))))
+    (if multishell-completing-read
+        ;; In multishell completing-read, arrange to conclude minibuffer input:
+        (throw 'multishell-minibuffer-exit (list entry pop set-primary-as-arg))
+      (multishell-pop-to-shell set-primary-as-arg entry (not pop)))))
 
 (defun multishell-list-placeholder (value default)
   "Return VALUE if non-empty string, else DEFAULT."

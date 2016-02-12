@@ -269,7 +269,7 @@ one emacs session to be resumed at the next, customize
 `savehist-additional-variables' to include the
 `multishell-primary-name'.")
 
-(defvar multishell-completing nil
+(defvar multishell-completing-read nil
   "Internal use, conveying whether or not we're in the midst of a multishell
 completing-read.")
 
@@ -437,9 +437,16 @@ customize the savehist group to activate savehist."
         (throw 'multishell-minibuffer-exit token)
       (let ((got (catch 'multishell-minibuffer-exit
                    (multishell-pop-to-shell-worker arg name here))))
-        (if (equal token got)
-            (multishell-list)
-          (multishell-pop-to-shell-worker nil got here))))))
+        ;; Handle catch or plain fall-through - see cond comments for protocol.
+        (cond
+         ;; Caught token from recursive invocation in minibuffer:
+         ((equal token got) (multishell-list))
+         ;; Caught specifaction of multishell args, eg from multishell-list:
+         ((listp got) (multishell-pop-to-shell-worker (nth 2 got)
+                                                      (nth 0 got)
+                                                      (nth 1 got)))
+         ;; Regular fallthrough - just relay the result:
+         (t got))))))
 
 (defun multishell-pop-to-shell-worker (&optional arg name here)
   "Do real work of `multishell-pop-to-shell', which see."
@@ -623,24 +630,24 @@ Input and completion can include associated path, if any.
 Return what's provided, if anything, else nil."
   (let* ((was-multishell-history multishell-history)
          (candidates (multishell-all-entries 'active-duplicated))
-         (got (cl-letf
-                  ;; Engage our custom display-completion-list, for
-                  ;; minibuffer-completion-help. `cl-letf' for dynamic
-                  ;; binding; cl-flet's lexical doesn't do what's needed.
-                  (((symbol-function 'display-completion-list)
-                    #'multishell-list))
-                (let ((multishell-completing t))
-                  (completing-read prompt
-                                   ;; COLLECTION:
-                                   (reverse candidates)
-                                   ;; PREDICATE:
-                                   nil
-                                   ;; REQUIRE-MATCH:
-                                   'confirm
-                                   ;; INITIAL-INPUT
-                                   initial
-                                   ;; HIST:
-                                   'multishell-history)))))
+         (multishell-completing-read t)
+         (got
+          ;; Use `cl-letf' to dynamically bind multishell-list to
+          ;; display-completion-list, so multishell-list is used when doing
+          ;; minibuffer-completion-help.
+          (cl-letf (((symbol-function 'display-completion-list)
+                     #'multishell-list))
+              (completing-read prompt
+                               ;; COLLECTION:
+                               (reverse candidates)
+                               ;; PREDICATE:
+                               nil
+                               ;; REQUIRE-MATCH:
+                               'confirm
+                               ;; INITIAL-INPUT
+                               initial
+                               ;; HIST:
+                               'multishell-history))))
     (when no-record
       (setq multishell-history was-multishell-history))
     (if (not (string= got ""))
