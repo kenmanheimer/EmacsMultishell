@@ -247,6 +247,22 @@ Initial sort is from most to least recently used:
         tabulated-list-entries #'multishell-list-entries)
   (tabulated-list-init-header))
 
+(defun multishell-list-cull-dups (entries)
+  "Return list of multishell ENTRIES sans ones with duplicate names.
+
+For duplicates, we prefer the ones that have paths."
+  (let ((tally (make-hash-table :test #'equal))
+        got name already)
+    (mapcar #'(lambda (entry)
+                (setq name (multishell-name-from-entry entry)
+                      already (gethash name tally nil))
+                (when (or (not already) (< (length already) (length entry)))
+                  ;; Add new or replace shorter prior entry for name:
+                  (puthash name entry tally)))
+            entries)
+    (maphash #'(lambda (key value) (push value got)) tally)
+    got))
+
 ;;;###autoload
 (defun multishell-list (&optional completing)
   "Edit your current and historic list of shell buffers.
@@ -278,13 +294,11 @@ You can get to the shells listing by recursively invoking
     (progv
         ;; Temporarily assign multishell-history only when completing:
         (when completing '(multishell-history))
-        (when completing (list (mapcar 'substring-no-properties completing)))
+        (when completing
+          (list (multishell-list-cull-dups (mapcar 'substring-no-properties
+                                                   completing))))
       (tabulated-list-print))
     (when completing
-      ;; XXX Do proper completion prep.
-      ;; - looks like stuff in minibuffer.el.gz is too hairy w/too little gain.
-      ;; - Add a buffer-change hook that throws a 'multishell-completion-done,
-      ;;   and revise the catch in multishell-pop-to-shell
       )
     (when from-entry
       (multishell-list-goto-item-by-entry from-entry))))
