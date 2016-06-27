@@ -694,7 +694,11 @@ and path nil if none is resolved."
 (declare-function tramp-cleanup-connection "tramp")
 
 (defun multishell-start-shell-in-buffer (path)
-  "Start, restart, or continue a shell in BUFFER-NAME on PATH."
+  "Start, restart, or continue a shell in BUFFER-NAME on PATH.
+
+If the path is remote and includes a directory, cd to that directory on the remote path.
+
+If cd fails to an included remote directory, try again without the cd."
   (let* ((is-active (comint-check-proc (current-buffer))))
 
     (when (and path (not is-active))
@@ -710,8 +714,25 @@ and path nil if none is resolved."
          (tramp-dissect-file-name default-directory 'noexpand)
          'keep-debug 'keep-password))
 
-      (when (file-remote-p path) (message "Connecting to %s" path))
-      (cd path))
+      (if (not (file-remote-p path))
+          (cd path)
+        (message "Connecting to %s" path)
+        (condition-case err
+            (cd path)
+          ;; "cd: No such directory found via CDPATH environment variable"
+          (error
+           (if (string=
+                (cadr err)
+                "No such directory found via CDPATH environment variable")
+               ;; Try again without dir part of remote path:
+               (let* ((final-colon-at (string-match ":[^:]+$" path))
+                      (sans-dir-path (substring path 0 (1+ final-colon-at)))
+                      (dir-path (substring path (1+ final-colon-at))))
+                 (message "Failed to cd to %s, trying again without..."
+                          dir-path)
+                 (sit-for .5)
+                 (cd sans-dir-path))
+             (signal (car err) (cdr err)))))))
 
     (shell (current-buffer))))
 
