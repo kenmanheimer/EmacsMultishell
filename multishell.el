@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2016 Free Software Foundation, Inc.
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.1.5
+;; Version: 1.1.6
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
@@ -59,6 +59,9 @@
 ;;
 ;; Change Log:
 ;;
+;; * 2016-06-27 1.1.6 Ken Manheimer:
+;;   - When starting a remote shell, if cd fails to an inital remote
+;;     directory, try again without the cd.
 ;; * 2016-02-11 1.1.5 Ken Manheimer:
 ;;   - Rectify multishell list sorting to preserve recentness
 ;;   - Increment the actual multishell-version setting, neglected for 1.1.4.
@@ -159,7 +162,7 @@
 (require 'savehist)
 (require 'multishell-list)
 
-(defvar multishell-version "1.1.5")
+(defvar multishell-version "1.1.6")
 (defun multishell-version (&optional here)
   "Return string describing the loaded multishell version."
   (interactive "P")
