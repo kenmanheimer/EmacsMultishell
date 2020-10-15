@@ -294,7 +294,7 @@ You can get to the shells listing by recursively invoking
         (set-buffer buffer)
       (pop-to-buffer buffer))
     (multishell-list-mode)
-    (progv
+    (cl-progv
         ;; Temporarily assign multishell-history only when completing:
         (when completing '(multishell-history))
         (when completing
