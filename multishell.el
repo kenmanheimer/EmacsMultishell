@@ -1,9 +1,9 @@
 ;;; multishell.el --- Easily use multiple shell buffers, local and remote.
 
-;; Copyright (C) 1999-2016 Free Software Foundation, Inc.
+;; Copyright (C) 1999-2020 Free Software Foundation, Inc.
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.1.6
+;; Version: 1.1.7
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
@@ -59,6 +59,9 @@
 ;;
 ;; Change Log:
 ;;
+;; * 2020-10-15 1.1.7 Ken Manheimer:
+;;   - Forward compatibility: 'cl-progv' rather than 'progv', resolves
+;;     multishell-list error in recent emacs versions.
 ;; * 2016-06-27 1.1.6 Ken Manheimer:
 ;;   - When starting a remote shell, if cd fails to an inital remote
 ;;     directory, try again without the cd.
@@ -162,7 +165,7 @@
 (require 'savehist)
 (require 'multishell-list)
 
-(defvar multishell-version "1.1.6")
+(defvar multishell-version "1.1.7")
 (defun multishell-version (&optional here)
   "Return string describing the loaded multishell version."
   (interactive "P")
