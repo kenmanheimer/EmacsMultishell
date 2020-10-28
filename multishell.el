@@ -327,29 +327,29 @@ historical shells, collectively, using `multishell-list' - see below.
 Customize-group `multishell' to set up a key binding and tweak behaviors.
 
 Manage your collection of current and historical shells by
-recursively invoking \\[multishell-pop-to-shell] at the
-`multishell-pop-to-shell' universal argument prompts, eg:
+recursively invoking \\[multishell-pop-to-shell] at the `multishell-pop-to-shell'
+universal argument prompts, eg:
 
   \\[universal-argument] \\[multishell-pop-to-shell] \\[multishell-pop-to-shell]
 
-\(That will be just a few keys if you do the above
-customization.) Hit ? in the listing buffer for editing commands.
+\(That will be just a few keys if you do the above customization.)
+
+Hit ? in the listing buffer for editing commands.
 
 ==== Basic operation:
 
- - If the current buffer is shell-mode (or shell-mode derived)
-   buffer then focus is moved to the process input point.
+ - If the current buffer is shell-mode buffer (or shell-mode derived)
+   then focus is moved to the process input point.
 
-   \(You can use a universal argument go to a different shell
-   buffer when already in a buffer that has a process - see
-   below.)
+   \(Use a universal argument go to a different shell buffer
+   when already in a buffer that has a process - see below.)
 
- - If not in a shell buffer (or with universal argument), go to a
-   window that is already showing the (a) shell buffer, if any.
+ - If not in a shell buffer, go to a window that is already
+   showing a shell buffer, if any.
 
-   In this case, the cursor is left in its prior position in the
-   shell buffer. Repeating the command will then go to the
-   process input point, per the first item in this list.
+   In this case, the cursor is not moved to the process input
+   point. Repeating the command once you're in the buffer will
+   then move the cursor to the process input point.
 
    We respect `pop-up-windows', so you can adjust it to set the
    other-buffer/same-buffer behavior.
@@ -362,8 +362,8 @@ was disconnected or otherwise stopped, it's resumed.
 
 ===== Universal arg to start and select between named shell buffers:
 
-You can name alternate shell buffers to create or return to, by
-prefixing your \\[multishell-pop-to-shell] invocation with single or double
+You can assign a distinct name to new shell buffers by prefixing
+your \\[multishell-pop-to-shell] invocation with single or double
 `universal-argument', \\[universal-argument]:
 
  - With a single universal argument, prompt for the buffer name
@@ -375,7 +375,7 @@ prefixing your \\[multishell-pop-to-shell] invocation with single or double
    This combination makes it easy to start and switch across
    multiple shell restarts.
 
- - A double universal argument will prompt for the name *and* set
+ - A double universal argument will prompt for the name and set
    the default to that name, so the target shell becomes the
    primary.
 
@@ -383,10 +383,10 @@ prefixing your \\[multishell-pop-to-shell] invocation with single or double
    setting across emacs restarts.
 
  - Manage your collection of current and historical shells by
-   recursively invoking \\[multishell-pop-to-shell] at either of the
-   `multishell-pop-to-shell' universal argument prompts, or at any
-   time via \\[multishell-list]. Hit ? in the listing buffer for
-   editing commands.
+   recursively invoking \\[multishell-pop-to-shell] at the `multishell-pop-to-shell'
+   universal argument prompts, or at any time via
+   \\[multishell-list]. Hit ? in the listing buffer for editing
+   commands.
 
 ===== Select starting directory and remote host:
 
