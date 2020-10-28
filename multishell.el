@@ -338,8 +338,8 @@ Hit ? in the listing buffer for editing commands.
 
 ==== Basic operation:
 
- - If the current buffer is shell-mode buffer (or shell-mode derived)
-   then focus is moved to the process input point.
+ - If the current buffer is in shell-mode then focus is moved to
+   the process input point.
 
    \(Use a universal argument go to a different shell buffer
    when already in a buffer that has a process - see below.)
@@ -363,7 +363,7 @@ was disconnected or otherwise stopped, it's resumed.
 ===== Universal arg to start and select between named shell buffers:
 
 You can assign a distinct name to new shell buffers by prefixing
-your \\[multishell-pop-to-shell] invocation with single or double
+your \\[multishell-pop-to-shell] invocation with a single or double
 `universal-argument', \\[universal-argument]:
 
  - With a single universal argument, prompt for the buffer name
