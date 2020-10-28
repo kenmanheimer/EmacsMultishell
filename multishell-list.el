@@ -3,16 +3,15 @@
 ;; Copyright (C) 2016-2020 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.1.5
+;; Version: 1.1.8
 ;; Created: 2016 -- first public availability
 ;; Keywords: processes
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
 
 ;; See multishell.el for commentary, change log, etc.
 
-;; Load multishell to load this.
-
 (require 'tabulated-list)
+(require 'multishell)
 (eval-when-compile (require 'cl-lib))
 
 (defgroup multishell-list nil
