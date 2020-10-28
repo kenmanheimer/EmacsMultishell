@@ -10,7 +10,10 @@
 
 ;; See multishell.el for commentary, change log, etc.
 
+;; Load multishell to load this.
+
 (require 'tabulated-list)
+(eval-when-compile (require 'cl-lib))
 
 (defgroup multishell-list nil
   "Show a menu of all shell buffers in a buffer."
@@ -306,6 +309,5 @@ You can get to the shells listing by recursively invoking
       (multishell-list-goto-item-by-entry from-entry))))
 
 (provide 'multishell-list)
-(require 'multishell)
 
 ;;; multishell-list.el ends here
