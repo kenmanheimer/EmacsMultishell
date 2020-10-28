@@ -203,28 +203,25 @@ If optional UNBIND is true, globally unbind the key.
 
 * `multishell-activate-command-key' - Set this to get the binding or not.
 * `multishell-command-key' - The key to use for the binding, if appropriate."
-  (cond (unbind
-         (when (and (boundp 'multishell-command-key) multishell-command-key)
-           (global-unset-key multishell-command-key)))
-        ((not (and (boundp 'multishell-activate-command-key)
-                   (boundp 'multishell-command-key)))
-         nil)
-        ((and multishell-activate-command-key multishell-command-key)
-         (setq multishell--responsible-for-command-key t)
-         (global-set-key multishell-command-key 'multishell-pop-to-shell))))
+  (when (bound-and-true-p multishell-command-key)
+    (if unbind
+        (global-unset-key multishell-command-key)
+      (when (bound-and-true-p multishell-activate-command-key)
+        (setq multishell--responsible-for-command-key t)
+        (global-set-key multishell-command-key 'multishell-pop-to-shell)))))
 
 (defcustom multishell-activate-command-key nil
   "Set this to impose the `multishell-command-key' binding.
 
-You can instead manually bind `multishell-pop-to-shell` using emacs
-lisp, eg: (global-set-key \"\\M- \" 'multishell-pop-to-shell)."
+You can instead manually bind `multishell-pop-to-shell' using emacs
+lisp, eg: (global-set-key \"\\M- \" \\='multishell-pop-to-shell)."
   :type 'boolean
-  :set 'multishell-activate-command-key-setter)
+  :set #'multishell-activate-command-key-setter)
 
 ;; Implement the key customization whenever the package is loaded:
 (if (fboundp 'with-eval-after-load)
     (with-eval-after-load "multishell"
-			  (multishell-implement-command-key-choice))
+      (multishell-implement-command-key-choice))
   (eval-after-load "multishell"
     '(multishell-implement-command-key-choice)))
 
