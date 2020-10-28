@@ -236,14 +236,14 @@ Provide for concluding minibuffer interaction if we're in completing mode."
 
 Initial sort is from most to least recently used:
 
-- First active shells, flagged with '+' a plus sign
-- Then, inactive shells, flagged with '.' a period
-- Then historical shells that currently have no buffer, flagged with 'x' an ex
+- First active shells, flagged with `+' a plus sign
+- Then, inactive shells, flagged with `.' a period
+- Then historical shells that currently have no buffer, flagged with `x' an ex
 
 \\{multishell-list-mode-map\}"
   (setq tabulated-list-format
         [;; (name width sort '(:right-align nil :pad-right nil))
-         ("#" 0 multishell-collate-row-strings-as-numbers :pad-right 1)
+         ("#" 0 multishell-list--collate-row-strings-as-numbers :pad-right 1)
          ("! " 1 t :pad-right 1)
          ("Name" 15 t)
          ("Hops" 30 t)
