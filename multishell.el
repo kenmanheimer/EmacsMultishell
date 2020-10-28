@@ -760,7 +760,6 @@ If cd fails to an included remote directory, try again without the cd."
   (let* ((entries (multishell-history-entries name)))
     (dolist (entry entries)
       (let* ((name-path (multishell-split-entry entry))
-             (name (car name-path))
              (path (or (cadr name-path) "")))
         (when path
           (let* ((old-localname (or (file-remote-p path 'localname)
