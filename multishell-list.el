@@ -275,7 +275,7 @@ For duplicates, we prefer the ones that have paths."
   "Edit your current and historic list of shell buffers.
 
 If optional COMPLETING is nil, we present the full
-`multishell-history' list in a popped buffer named '*Shells*'.
+`multishell-history' list in a popped buffer named `*Shells*'.
 
 In the buffer, hit ? or h for a list of commands.
 
@@ -302,7 +302,7 @@ You can get to the shells listing by recursively invoking
         ;; Temporarily assign multishell-history only when completing:
         (when completing '(multishell-history))
         (when completing
-          (list (multishell-list-cull-dups (mapcar 'substring-no-properties
+          (list (multishell-list-cull-dups (mapcar #'substring-no-properties
                                                    completing))))
       (tabulated-list-print))
     (when completing
