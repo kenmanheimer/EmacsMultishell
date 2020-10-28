@@ -1,11 +1,12 @@
-;;; multishell.el --- Easily use multiple shell buffers, local and remote.
+;;; multishell.el --- Easily use multiple shell buffers, local and remote.  -*- lexical-binding:t -*-
 
-;; Copyright (C) 1999-2020 Free Software Foundation, Inc.
+;; Copyright (C) 1999-2020 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
 ;; Version: 1.1.7
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
+;; Package-Requires: ((cl-lib "0.5"))
 ;; URL: https://github.com/kenmanheimer/EmacsMultishell
 ;;
 ;;; Commentary:
