@@ -203,7 +203,9 @@ Provide for concluding minibuffer interaction if we're in completing mode."
               (not (string= (tabulated-list-get-id) entry)))
     (forward-line 1)))
 
-(defun multishell-collate-row-strings-as-numbers (a b)
+(define-obsolete-function-alias 'multishell-collate-row-strings-as-numbers
+  #'multishell-list--collate-row-strings-as-numbers "multishell 1.1.6")
+(defun multishell-list--collate-row-strings-as-numbers (a b)
   (let ((a (aref (cadr a) 0))
         (b (aref (cadr b) 0)))
     (> (string-to-number a) (string-to-number b))))
