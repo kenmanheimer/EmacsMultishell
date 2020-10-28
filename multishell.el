@@ -304,6 +304,7 @@ Returns non-nil iff any changes were made."
             did-revisions t))
     did-revisions))
 
+;;;###autoload
 (defun multishell-history-entries (name)
   "Return `multishell-history' entry that starts with NAME, or nil if none."
   (let (got)
@@ -826,6 +827,7 @@ Returns nil for empty parts, rather than the empty string."
   (if (not (string= (substring name -1) "*"))
       (setq name (concat name "*")))
   name)
+;;;###autoload
 (defun multishell-unbracket (name)
   "Return a copy of name, removing asterisks, if any, at beginning and end."
   (if (string= (substring name 0 1) "*")
