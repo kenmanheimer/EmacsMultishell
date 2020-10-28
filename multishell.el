@@ -696,19 +696,22 @@ and path nil if none is resolved."
 (declare-function tramp-dissect-file-name "tramp")
 (declare-function tramp-cleanup-connection "tramp")
 
-(defun multishell-start-shell-in-buffer (path)
-  "Start, restart, or continue a shell in BUFFER-NAME on PATH.
+(defun multishell-start-shell-in-buffer (where)
+  "Start, restart, or continue a shell in current-buffer on WHERE.
 
-If the path is remote and includes a directory, cd to that directory on the remote path.
+If WHERE is remote and includes a directory, cd to that directory on the
+remote host.
 
 If cd fails to an included remote directory, try again without the cd."
   (let* ((is-active (comint-check-proc (current-buffer))))
 
-    (when (and path (not is-active))
+    (when (and where (not is-active))
 
-      (when (and (derived-mode-p 'shell-mode) (file-remote-p path))
+      ;; FIXME: file-remote-p does not imply Tramp.
+      ;; Why do we need to do something special for Tramp here?
+      (when (and (derived-mode-p 'shell-mode) (file-remote-p where))
         ;; Returning to disconnected remote shell - do some tidying.
-        ;; Without this cleanup, occasionally restarting a disconnected
+        ;; FIXME: Without this cleanup, occasionally restarting a disconnected
         ;; remote session, particularly one that includes sudo, results in
         ;; an untraceable "Args out of range" error. That never happens if
         ;; we precedeed connection attempts with this cleanup -
@@ -717,20 +720,20 @@ If cd fails to an included remote directory, try again without the cd."
          (tramp-dissect-file-name default-directory 'noexpand)
          'keep-debug 'keep-password))
 
-      (if (not (file-remote-p path))
-          (cd path)
-        (message "Connecting to %s" path)
+      (if (not (file-remote-p where))
+          (cd where)
+        (message "Connecting to %s" where)
         (condition-case err
-            (cd path)
+            (cd where)
           ;; "cd: No such directory found via CDPATH environment variable"
           (error
            (if (string=
                 (cadr err)
                 "No such directory found via CDPATH environment variable")
-               ;; Try again without dir part of remote path:
-               (let* ((final-colon-at (string-match ":[^:]+$" path))
-                      (sans-dir-path (substring path 0 (1+ final-colon-at)))
-                      (dir-path (substring path (1+ final-colon-at))))
+               ;; Try again without dir part of remote where:
+               (let* ((final-colon-at (string-match ":[^:]+$" where))
+                      (sans-dir-path (substring where 0 (1+ final-colon-at)))
+                      (dir-path (substring where (1+ final-colon-at))))
                  (message "Failed to cd to %s, trying again without..."
                           dir-path)
                  (sit-for .5)
