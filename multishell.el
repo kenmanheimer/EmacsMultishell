@@ -60,10 +60,11 @@
 ;;
 ;; Change Log:
 ;;
-;; * 2020-10-15 1.1.7 Ken Manheimer:
+;; * 2020-10-28 1.1.7 Ken Manheimer:
 ;;   - Forward compatibility: 'cl-progv' rather than 'progv', resolves
 ;;     multishell-list error in recent emacs versions.
-;; * 2016-06-27 1.1.6 Ken Manheimer:
+;;   - Incorporate other's refinements (thanks!)
+;; * 2016-06-27 1.1.6 Ken Manheimer (unreleased):
 ;;   - When starting a remote shell, if cd fails to an inital remote
 ;;     directory, try again without the cd.
 ;; * 2016-02-11 1.1.5 Ken Manheimer:
