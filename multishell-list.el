@@ -253,15 +253,14 @@ Initial sort is from most to least recently used:
 For duplicates, we prefer the ones that have paths."
   (let ((tally (make-hash-table :test #'equal))
         got name name-order-reversed already)
-    (mapcar #'(lambda (entry)
-                (setq name (multishell-name-from-entry entry)
-                      already (gethash name tally nil))
-                (when (not already)
-                  (push name name-order-reversed))
-                (when (or (not already) (< (length already) (length entry)))
-                  ;; Add new or replace shorter prior entry for name:
-                  (puthash name entry tally)))
-            entries)
+    (dolist (entry entries)
+      (setq name (multishell-name-from-entry entry)
+            already (gethash name tally nil))
+      (when (not already)
+        (push name name-order-reversed))
+      (when (or (not already) (< (length already) (length entry)))
+        ;; Add new or replace shorter prior entry for name:
+        (puthash name entry tally)))
     (dolist (name name-order-reversed)
       (push (gethash name tally) got))
     got))
