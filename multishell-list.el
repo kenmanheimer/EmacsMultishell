@@ -65,9 +65,9 @@ switch to the buffer but don't activate (or deactivate) it it."
     (with-current-buffer list-buffer
       (revert-buffer))))
 
-(defun multishell-list-delete (&optional arg)
+(defun multishell-list-delete (&optional _arg)
   "Remove current shell entry, and prompt for buffer-removal if present."
-  (interactive "P")
+  (interactive)
   (let* ((entry (tabulated-list-get-id))
          (name (multishell-name-from-entry entry))
          (name-bracketed (multishell-bracket name))
