@@ -1,4 +1,4 @@
-;;; multishell.el --- Easily use multiple shell buffers, local and remote.  -*- lexical-binding:t -*-
+;;; multishell.el --- Easily use multiple shell buffers, local and remote  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 1999-2020 Free Software Foundation, Inc. and Ken Manheimer
 
