@@ -3,7 +3,7 @@
 ;; Copyright (C) 1999-2020 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
-;; Version: 1.1.7
+;; Version: 1.1.9
 ;; Created: 1999 -- first public availability
 ;; Keywords: processes
 ;; Package-Requires: ((cl-lib "0.5"))
@@ -60,6 +60,8 @@
 ;;
 ;; Change Log:
 ;;
+;; * 2020-10-30 1.1.9 Ken Manheimer:
+;;   - Require cl-lib when compiling for cl-letf macro.
 ;; * 2020-10-28 1.1.8 Ken Manheimer:
 ;;   - Change back to having multishell-list require multishell,
 ;;     rather than the other way around, and remove now unnecessary
@@ -170,8 +172,9 @@
 (require 'comint)
 (require 'shell)
 (require 'savehist)
+(eval-when-compile (require 'cl-lib))
 
-(defvar multishell-version "1.1.8")
+(defvar multishell-version "1.1.9")
 (defun multishell-version (&optional here)
   "Return string describing the loaded multishell version."
   (interactive "P")
