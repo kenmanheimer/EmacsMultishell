@@ -206,56 +206,17 @@ with allout-mode."
          (global-unset-key multishell-command-key)
          (setq multishell-command-key nil)))
  )
-(defcustom multishell-command-key "\M- "
+(defcustom multishell-command-key [M-space]
   "Key to bind to `multishell-pop-to-shell`.
 
-Choose nil to not establish a key binding, and remove the prior binding
-if there was one."
+If you select None then the prior binding is removed.
+
+\(In some windowing environments `M- ` (Meta-space) doesn't
+work. A possibly appealing alternative is `M-<return>`.)"
   :set #'multishell-command-key-setter
-  :type '(choice (const nil)
-                 (key-sequence)))
-
-(defvar multishell--responsible-for-command-key nil
-  "Coordination for multishell key assignment.")
-(make-obsolete 'multishell--responsible-for-command-key nil "1.1.10")
-
-(defun multishell-activate-command-key-setter (symbol setting)
-  "Implement `multishell-activate-command-key' choice."
-  (declare (obsolete 'multishell-activate-command-key-setter "1.1.10"))
-  (set-default symbol setting)
-  (when (or setting multishell--responsible-for-command-key)
-    (multishell-implement-command-key-choice (not setting))))
-
-(defun multishell-implement-command-key-choice (&optional unbind)
-  "If settings dicate, implement binding of multishell command key.
-
-If optional UNBIND is true, globally unbind the key.
-
-* `multishell-activate-command-key' - Set this to get the binding or not.
-* `multishell-command-key' - The key to use for the binding, if appropriate."
-  (declare (obsolete 'multishell-implement-command-key-choice "1.1.10"))
-  (when (bound-and-true-p multishell-command-key)
-    (if unbind
-        (global-unset-key multishell-command-key)
-      (when (bound-and-true-p multishell-activate-command-key)
-        (setq multishell--responsible-for-command-key t)
-        (global-set-key multishell-command-key 'multishell-pop-to-shell)))))
-
-;; (defcustom multishell-activate-command-key nil
-;;   "Set this to impose the `multishell-command-key' binding.
-
-;; You can instead manually bind `multishell-pop-to-shell' using emacs
-;; lisp, eg: (global-set-key \"\\M- \" \\='multishell-pop-to-shell)."
-;;   :type 'boolean
-;;   :set #'multishell-activate-command-key-setter)
-(make-obsolete 'multishell--responsible-for-command-key nil "1.1.10")
-
-;; ;; Implement the key customization whenever the package is loaded:
-;; (if (fboundp 'with-eval-after-load)
-;;     (with-eval-after-load "multishell"
-;;       (multishell-implement-command-key-choice))
-;;   (eval-after-load "multishell"
-;;     '(multishell-implement-command-key-choice)))
+  :type '(choice
+          (const :tag "None" nil)
+          (key-sequence :tag "Key sequence")))
 
 (defcustom multishell-pop-to-frame nil
   "*If non-nil, jump to a frame already showing the shell, if another one is.
