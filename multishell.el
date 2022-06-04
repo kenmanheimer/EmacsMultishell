@@ -186,40 +186,49 @@
           (message "%s" msg)
         msg))))
 
-(defgroup multishell nil
-  "Allout extension that highlights outline structure graphically.
+
+;;;###autoload
+(unless (fboundp 'multishell-pop-to-shell)
+  (defgroup multishell nil
+    "Allout extension that highlights outline structure graphically.
 
 Customize `allout-widgets-auto-activation' to activate allout-widgets
 with allout-mode."
-  :group 'shell)
+    :group 'shell))
 
-(defun multishell-command-key-setter (symbol value)
-  "Establish key binding, or do nothing if none selected."
-  symbol
-  (cond (value
-         (setq multishell-command-key value)
-         (global-set-key multishell-command-key 'multishell-pop-to-shell))
-        ((and multishell-command-key
-              (equal (lookup-key (current-global-map)
-                                 multishell-command-key)
-                     'multishell-pop-to-shell))
-         (global-unset-key multishell-command-key)
-         (setq multishell-command-key nil)))
+;;;###autoload
+(unless (fboundp 'multishell-pop-to-shell)
+  (defun multishell-command-key-setter (symbol value)
+    "Establish key binding, or do nothing if none selected."
+    symbol
+    (cond (value
+           (setq multishell-command-key value)
+           (global-set-key multishell-command-key 'multishell-pop-to-shell))
+          ((and multishell-command-key
+                (equal (lookup-key (current-global-map)
+                                   multishell-command-key)
+                       'multishell-pop-to-shell))
+           (global-unset-key multishell-command-key)
+           (setq multishell-command-key nil))))
  )
-(defcustom multishell-command-key [M-space]
-  "Key to bind to `multishell-pop-to-shell`.
+;;;###autoload
+(unless (fboundp 'multishell-pop-to-shell)
+  (defcustom multishell-command-key [M-space]
+    "Key to bind to `multishell-pop-to-shell`.
 
 If you select None then the prior binding is removed.
 
 \(In some windowing environments `M- ` (Meta-space) doesn't
 work. A possibly appealing alternative is `M-<return>`.)"
-  :set #'multishell-command-key-setter
-  :type '(choice
-          (const :tag "None" nil)
-          (key-sequence :tag "Key sequence")))
+    :set #'multishell-command-key-setter
+    :type '(choice
+            (const :tag "None" nil)
+            (key-sequence :tag "Key sequence"))))
 
-(defcustom multishell-pop-to-frame nil
-  "*If non-nil, jump to a frame already showing the shell, if another one is.
+;;;###autoload
+(unless (fboundp 'multishell-pop-to-shell)
+  (defcustom multishell-pop-to-frame nil
+    "*If non-nil, jump to a frame already showing the shell, if another one is.
 
 Otherwise, disregard already-open windows on the shell if they're
 in another frame, and open a new window on the shell in the
@@ -227,17 +236,19 @@ current frame.
 
 \(Use `pop-up-windows' to change multishell other-window vs
 current-window behavior.)"
-  :type 'boolean)
+    :type 'boolean))
 
-(defcustom multishell-history-entry-tracks-current-directory t
-  "Maintain shell's current directory in its multishell history entry.
+;;;###autoload
+(unless (fboundp 'multishell-pop-to-shell)
+  (defcustom multishell-history-entry-tracks-current-directory t
+    "Maintain shell's current directory in its multishell history entry.
 
 When set, the history entry for shells started with explicit
 paths will track the shell's current working directory.
 
 If `savehist-save-minibuffer-history' is enabled, the current
 working directory of shells will be conveyed between Emacs sessions."
- :type 'boolean)
+    :type 'boolean))
 
 (defvar multishell-history nil
   "Name/path entries, most recent first.")
