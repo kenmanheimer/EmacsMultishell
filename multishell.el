@@ -211,6 +211,11 @@ with allout-mode."
            (global-unset-key multishell-command-key)
            (setq multishell-command-key nil))))
  )
+
+;; For the package load to be triggered by a user's customized
+;; multishell-command-key we have to autoload the customizations. That
+;; requires a workaround like that described here, which I use:
+;; https://stackoverflow.com/questions/32693757/emacs-package-customization-and-autoloads
 ;;;###autoload
 (unless (fboundp 'multishell-pop-to-shell)
   (defcustom multishell-command-key [M-space]
