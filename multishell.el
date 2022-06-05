@@ -61,6 +61,9 @@
 ;; Change Log:
 ;;
 ;; * 2022-06-04 1.1.10 Ken Manheimer:
+;;   - Autoload customizations so customized multishell keybinding triggers
+;;     load of the package.
+;; * 2021-08-02 1.1.10 Ken Manheimer:
 ;;   - Get basic multishell command-key customization working.
 ;; * 2020-10-30 1.1.9 Ken Manheimer:
 ;;   - Require cl-lib when compiling for cl-letf macro.
