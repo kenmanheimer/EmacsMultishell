@@ -1,6 +1,6 @@
 ;;; multishell-list.el --- tabulated-list-mode for multishell shell buffers  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2016-2020 Free Software Foundation, Inc. and Ken Manheimer
+;; Copyright (C) 2016-2022 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
 ;; Version: 1.1.8

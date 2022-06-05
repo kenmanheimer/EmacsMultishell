@@ -1,6 +1,6 @@
 ;;; multishell.el --- Organize use of multiple shell buffers, local and remote  -*- lexical-binding:t -*-
 
-;; Copyright (C) 1999-2020 Free Software Foundation, Inc. and Ken Manheimer
+;; Copyright (C) 1999-2022 Free Software Foundation, Inc. and Ken Manheimer
 
 ;; Author: Ken Manheimer <ken.manheimer@gmail.com>
 ;; Version: 1.1.10
